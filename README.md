@@ -1,82 +1,119 @@
-# Knight's Tour Pro
+<h1 align="center">♞ Knight’s Tour Pro</h1>
 
-High‑performance, extensible solver for the Knight's Tour problem—designed to showcase clean architecture, advanced search techniques (Warnsdorff heuristic, back‑tracking, parallel Fork/Join, and Knuth’s Algorithm X with Dancing Links), and a modern development workflow.
+<p align="center">
+  <b>Clean. Fast. Extensible.</b><br>
+  A modern Java-based solver for the Knight’s Tour problem with multiple search strategies, scalable architecture, and CLI support.
+</p>
 
----
-
-##  Project Goals
-
-* **Educational clarity** – readable, well‑documented code suitable for blog posts or talks.
-* **Performance** – provide multiple solving strategies and benchmark them.
-* **Extensibility** – plug‑in architecture for new heuristics or visual front‑ends.
-* **Professional polish** – full CI/CD, >90 % test coverage, code quality gates.
-
----
-
-##  Current Features (MVP)
-
-| Feature                | Status |
-| ---------------------- | ------ |
-| Backtracking solver    | ✅      |
-| Warnsdorff heuristic   | ✅      |
-| Command‑line interface | ✅      |
-| JSON/TXT export        | ✅      |
-
-Planned items live in the [Roadmap](#roadmap).
+<p align="center">
+  <img src="https://img.shields.io/github/languages/top/lokeshagarwal2304/knights-tour-pro?style=flat-square"/>
+  <img src="https://img.shields.io/github/license/lokeshagarwal2304/knights-tour-pro?style=flat-square"/>
+  <img src="https://img.shields.io/github/stars/lokeshagarwal2304/knights-tour-pro?style=flat-square"/>
+  <img src="https://img.shields.io/github/last-commit/lokeshagarwal2304/knights-tour-pro?style=flat-square"/>
+</p>
 
 ---
 
-##  Directory Structure (gradle layout)
+## 🔍 What is Knight’s Tour?
+
+The **Knight's Tour** is a classic problem where the knight piece must move to every square on a chessboard exactly once.  
+This repo provides high-performance solving strategies with educational clarity and clean architecture.
+
+---
+
+## 🎯 Key Goals
+
+| 🎓 Educational | 🚀 Performance | 🧩 Extensibility | ✅ Polish |
+|----------------|----------------|------------------|-----------|
+| Easy-to-understand, readable code | Multiple strategies with benchmarking | Plug-in ready for new heuristics & GUI | Full CI/CD, test coverage, quality gates |
+
+---
+
+## ⚡ Features Implemented
+
+- ✅ Backtracking Solver  
+- ✅ Warnsdorff Heuristic  
+- ✅ CLI Interface  
+- ✅ JSON/TXT Export  
+
+🔜 **Planned in Roadmap**:
+- Parallel Fork/Join Solver  
+- Algorithm X + DLX  
+- JavaFX GUI  
+- JMH Benchmarks  
+- Docker Image + GitHub Pages Demo  
+
+---
+
+## 🧠 Architecture (Gradle Layout)
 
 ```bash
+.
 ├── src
-│   ├── main
-│   │   └── java       # Production code
-│   ├── test
-│   │   └── java       # JUnit tests
-│   └── benchmark      # Micro‑benchmarks & JMH
-├── docs               # Architecture diagrams & wiki assets
-├── .github
-│   └── workflows      # CI pipelines
-└── build.gradle.kts   # Build script (Kotlin DSL)
-```
+│   ├── main/java         # Solver core
+│   ├── test/java         # Unit tests
+│   └── benchmark         # JMH Benchmarks
+├── docs/                 # Architecture diagrams
+├── .github/workflows/    # CI/CD pipelines
+└── build.gradle.kts      # Kotlin DSL Build script
+````
 
-> **Why this layout?** It is the default Gradle convention, instantly recognisable to recruiters and CI tools.
+> ✨ Follows Gradle conventions for compatibility with IDEs & CI tools.
 
 ---
 
-##  Building & Running
+## 🛠️ Build & Run Instructions
 
 ```bash
-# Compile + run tests
+# Compile and run tests
 ./gradlew clean build
 
-# Launch CLI with default settings
+# Run the solver
 java -jar build/libs/knights-tour.jar --help
 ```
 
-Java 17 or newer is required.
+> 📌 Requires **Java 17+**
 
 ---
 
-##  Roadmap
+## 🛣 Roadmap Preview
 
-1. **Parallel Fork/Join solver** – configurable thread pool.
-2. **Exact Cover (Algorithm X + DLX)** implementation.
-3. **Benchmark module** with JMH + CSV output.
-4. **JavaFX GUI** with interactive board.
-5. **Docker image + GitHub Pages demo**.
+* [x] Implement backtracking + Warnsdorff
+* [ ] Add Fork/Join parallel solver
+* [ ] Add Algorithm X (DLX) solver
+* [ ] JavaFX GUI & interactive board
+* [ ] Docker support & GitHub Pages integration
 
-See [`docs/ROADMAP.md`](docs/ROADMAP.md) for a detailed timeline.
-
----
-
-##  Contributing
-
-Pull requests are welcome! Please follow the style guide enforced by Spotless & Checkstyle and ensure all tests pass.
+View full roadmap in [`docs/ROADMAP.md`](docs/ROADMAP.md)
 
 ---
 
-##  License
+## 💡 Why Use This?
 
-This project is licensed under the MIT license – see the [LICENSE](LICENSE) file for details.
+* 📚 For learning search techniques & clean Java code.
+* 📈 For benchmarking solver strategies.
+* ♟️ For hobby chess coders and competitive programmers.
+* 🧱 For plugging into bigger AI or visual systems.
+
+---
+
+## 🤝 Contributing Guidelines
+
+We love contributions!
+Make sure to:
+
+* Follow formatting (Spotless/Checkstyle)
+* Write meaningful commits
+* Submit clean PRs with passing tests
+
+---
+
+## 📜 License
+
+Licensed under the **MIT License**. See [`LICENSE`](LICENSE) for more.
+
+---
+
+<p align="center">
+  Made with 💻 and ❤️ by <a href="https://github.com/lokeshagarwal2304">lokeshagarwal2304</a>
+</p>
