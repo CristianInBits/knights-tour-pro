@@ -1,5 +1,13 @@
 package knights;
 
+import knights.model.Board;
+import knights.model.Position;
+import knights.solver.BacktrackingAllSolutionsSolver;
+import knights.solver.BacktrackingSolver;
+import knights.solver.TourSolver;
+
+import java.util.List;
+
 public class Main {
     public static void main(String[] args) {
         if (args.length < 5) {
@@ -16,5 +24,36 @@ public class Main {
 
         System.out.printf("Board: %dx%d | Start: (%d,%d) | Mode: %s\n",
                 rows, cols, startRow, startCol, mode);
+
+        Board board = new Board(rows, cols);
+        Position start = new Position(startRow, startCol);
+
+        if (mode.equalsIgnoreCase("all")) {
+            BacktrackingAllSolutionsSolver solver = new BacktrackingAllSolutionsSolver(board, start, false);
+            List<List<Position>> allSolutions = solver.solveAll();
+            System.out.printf("Found %d solutions.%n", allSolutions.size());
+
+            int toPrint = Math.min(3, allSolutions.size());
+            for (int i = 0; i < toPrint; i++) {
+                System.out.printf("\nSolution #%d:%n", i + 1);
+                board.reset();
+                List<Position> solution = allSolutions.get(i);
+                for (int j = 0; j < solution.size(); j++) {
+                    board.mark(solution.get(j), j);
+                }
+                board.print();
+            }
+        } else {
+            TourSolver solver = new BacktrackingSolver(board, start, false);
+            List<Position> solution = solver.solve();
+            if (solution.isEmpty()) {
+                System.out.println("No solution found.");
+            } else {
+                for (int i = 0; i < solution.size(); i++) {
+                    board.mark(solution.get(i), i);
+                }
+                board.print();
+            }
+        }
     }
 }
