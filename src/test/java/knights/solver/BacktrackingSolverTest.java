@@ -25,4 +25,18 @@ class BacktrackingSolverTest {
         // Optional: print to check visually during dev
         board.print();
     }
+
+    @Test
+    void testTourStartsAtGivenPosition() {
+        int rows = 5, cols = 5;
+        Board board = new Board(rows, cols);
+        Position start = new Position(0, 0);
+        TourSolver solver = new BacktrackingSolver(board, start);
+
+        List<Position> solution = solver.solve();
+
+        assertFalse(solution.isEmpty(), "Solution should not be empty");
+        assertEquals(start, solution.get(0), "Tour must start at the given position");
+    }
+
 }
