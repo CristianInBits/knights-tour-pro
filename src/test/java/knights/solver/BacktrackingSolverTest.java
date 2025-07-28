@@ -15,7 +15,7 @@ class BacktrackingSolverTest {
         int rows = 5, cols = 5;
         Board board = new Board(rows, cols);
         Position start = new Position(0, 0);
-        TourSolver solver = new BacktrackingSolver(board, start);
+        TourSolver solver = new BacktrackingSolver(board, start, false);
 
         List<Position> solution = solver.solve();
 
@@ -31,12 +31,28 @@ class BacktrackingSolverTest {
         int rows = 5, cols = 5;
         Board board = new Board(rows, cols);
         Position start = new Position(0, 0);
-        TourSolver solver = new BacktrackingSolver(board, start);
+        TourSolver solver = new BacktrackingSolver(board, start, false);
 
         List<Position> solution = solver.solve();
 
         assertFalse(solution.isEmpty(), "Solution should not be empty");
         assertEquals(start, solution.get(0), "Tour must start at the given position");
+    }
+
+    @Test
+    void testClosedTour6x6From00() {
+        int rows = 6, cols = 6;
+        Board board = new Board(rows, cols);
+        Position start = new Position(0, 0);
+        TourSolver solver = new BacktrackingSolver(board, start, true);
+
+        List<Position> solution = solver.solve();
+
+        assertEquals(rows * cols, solution.size(), "The tour should visit all cells");
+        assertFalse(solution.isEmpty(), "Solution should not be empty");
+
+        Position end = solution.get(solution.size() - 1);
+        assertTrue(end.isAdjacent(start), "In a closed tour, last move must connect to start");
     }
 
 }
