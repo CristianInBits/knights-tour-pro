@@ -17,9 +17,12 @@ public class BacktrackingSolver implements TourSolver {
     private final Position start;
     private final List<Position> path;
 
-    public BacktrackingSolver(Board board, Position start) {
+    private final boolean isClosed;
+
+    public BacktrackingSolver(Board board, Position start, boolean isClosed) {
         this.board = board;
         this.start = start;
+        this.isClosed = isClosed;
         this.path = new ArrayList<>();
     }
 
@@ -37,13 +40,18 @@ public class BacktrackingSolver implements TourSolver {
     }
 
     private boolean dfs(Position current, int step) {
-        if (step == board.totalCells()) return true;
+        if (step == board.totalCells()) {
+            if (!isClosed)
+                return true;
+            Position last = path.get(path.size() - 1);
+            return last.isAdjacent(start);
+        }
 
         for (Position next : KnightMove.generateNextPositions(current)) {
             if (board.isInside(next) && !board.isVisited(next)) {
                 board.mark(next, step);
                 path.add(next);
-                if (dfs(next, step + 1)) 
+                if (dfs(next, step + 1))
                     return true;
                 path.remove(path.size() - 1);
                 board.unmark(next);
