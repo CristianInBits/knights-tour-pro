@@ -24,5 +24,13 @@ dependencies {
 }
 
 application {
-    mainClass.set("knights.Main") // puedes cambiarlo más adelante
+    mainClass.set("knights.Main")
+}
+
+tasks.jar {
+    manifest {
+        attributes["Main-Class"] = "knights.Main"
+    }
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    from(configurations.runtimeClasspath.get().map { if (it.isDirectory) it else zipTree(it) })
 }
