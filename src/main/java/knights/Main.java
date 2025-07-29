@@ -2,9 +2,7 @@ package knights;
 
 import knights.model.Board;
 import knights.model.Position;
-import knights.solver.BacktrackingAllSolutionsSolver;
-import knights.solver.BacktrackingSolver;
-import knights.solver.TourSolver;
+import knights.solver.*;
 
 import java.util.List;
 
@@ -12,8 +10,10 @@ public class Main {
     public static void main(String[] args) {
         if (args.length < 6) {
             System.out.println(
-                    "Usage: java -jar knights-tour.jar <rows> <cols> <startRow> <startCol> <mode> <tourType>");
-            System.out.println("Example: java -jar knights-tour.jar 5 5 0 0 single open");
+                    "Usage: java -jar knights-tour.jar <rows> <cols> <startRow> <startCol> <mode> <tourType> [strategy]");
+            System.out.println("mode: single | all");
+            System.out.println("tourType: open | closed");
+            System.out.println("strategy (optional): backtrack (default) | warnsdorff");
             return;
         }
 
@@ -23,15 +23,24 @@ public class Main {
         int startCol = Integer.parseInt(args[3]);
         String mode = args[4];
         String tourType = args[5];
+        String strategy = args.length >= 7 ? args[6] : "backtrack";
+
         boolean isClosed = tourType.equalsIgnoreCase("closed");
 
-        System.out.printf("Board: %dx%d | Start: (%d,%d) | Mode: %s | Tour: %s\n",
-                rows, cols, startRow, startCol, mode, isClosed ? "closed" : "open");
+        System.out.printf("Board: %dx%d | Start: (%d,%d) | Mode: %s | Tour: %s | Strategy: %s\n",
+                rows, cols, startRow, startCol, mode,
+                isClosed ? "closed" : "open",
+                strategy);
 
         Board board = new Board(rows, cols);
         Position start = new Position(startRow, startCol);
 
         if (mode.equalsIgnoreCase("all")) {
+            if ("warnsdorff".equalsIgnoreCase(strategy)) {
+                System.out.println("Warnsdorff strategy does not support generating all solutions.");
+                return;
+            }
+
             BacktrackingAllSolutionsSolver solver = new BacktrackingAllSolutionsSolver(board, start, isClosed);
             List<List<Position>> allSolutions = solver.solveAll();
             System.out.printf("Found %d solutions.%n", allSolutions.size());
@@ -47,8 +56,15 @@ public class Main {
                 board.print();
             }
         } else {
-            TourSolver solver = new BacktrackingSolver(board, start, isClosed);
+            TourSolver solver;
+            if ("warnsdorff".equalsIgnoreCase(strategy)) {
+                solver = new WarnsdorffSolver(board, start, isClosed);
+            } else {
+                solver = new BacktrackingSolver(board, start, isClosed);
+            }
+
             List<Position> solution = solver.solve();
+
             if (solution.isEmpty()) {
                 System.out.println("No solution found.");
             } else {
