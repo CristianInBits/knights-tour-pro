@@ -36,7 +36,7 @@ public class WarnsdorffSolver implements TourSolver {
             }
         }
 
-        if (!closed || path.getLast().isAdjacent(start)) {
+        if (!closed || path.get(path.size() - 1).isAdjacent(start)) {
             return path;
         }
 
