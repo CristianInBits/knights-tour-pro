@@ -1,7 +1,5 @@
 package knights.model;
 
-import java.util.Objects;
-
 /**
  * Represents a coordinate (row, col) on the board.
  */
