@@ -1,6 +1,7 @@
 package knights.model;
 
 import java.util.Arrays;
+import java.util.List;
 
 /**
  * Represents the knight's tour board with move order tracking.
@@ -66,5 +67,11 @@ public class Board {
             }
             System.out.println();
         }
+    }
+
+    public List<Position> legalMoves(Position from) {
+        return KnightMove.generateNextPositions(from).stream()
+                .filter(this::isInside)
+                .toList();
     }
 }
