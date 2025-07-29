@@ -1,82 +1,138 @@
-# Knight's Tour Pro
+# ♞ Knight's Tour Pro
 
-High‑performance, extensible solver for the Knight's Tour problem—designed to showcase clean architecture, advanced search techniques (Warnsdorff heuristic, back‑tracking, parallel Fork/Join, and Knuth’s Algorithm X with Dancing Links), and a modern development workflow.
-
----
-
-##  Project Goals
-
-* **Educational clarity** – readable, well‑documented code suitable for blog posts or talks.
-* **Performance** – provide multiple solving strategies and benchmark them.
-* **Extensibility** – plug‑in architecture for new heuristics or visual front‑ends.
-* **Professional polish** – full CI/CD, >90 % test coverage, code quality gates.
+High-performance, modular solver for the Knight's Tour problem — built to demonstrate clean architecture, extensible design, and advanced solving strategies.
 
 ---
 
-##  Current Features (MVP)
+## ✨ Project Goals
 
-| Feature                | Status |
-| ---------------------- | ------ |
-| Backtracking solver    | ✅      |
-| Warnsdorff heuristic   | ✅      |
-| Command‑line interface | ✅      |
-| JSON/TXT export        | ✅      |
-
-Planned items live in the [Roadmap](#roadmap).
+- **Educational clarity** – readable, well-documented code suitable for talks or tutorials.
+- **Performance** – multiple solving strategies with future benchmarking.
+- **Extensibility** – architecture supports adding new solvers or front-ends.
+- **Professional polish** – CI/CD, test coverage, code quality tools.
 
 ---
 
-##  Directory Structure (gradle layout)
+## ✅ Features (Current MVP)
+
+| Feature                   | Status |
+|---------------------------|--------|
+| Backtracking solver       | ✅     |
+| Warnsdorff heuristic      | ✅     |
+| Command-line interface    | ✅     |
+| Closed vs Open tour modes | ✅     |
+| Basic CLI testing         | ✅     |
+| Strategy selection via CLI| ✅     |
+| JSON/TXT export           | 🚧 (Planned) |
+| Benchmark module (JMH)    | 🚧 (Planned) |
+
+> Planned items are tracked in the [Roadmap](#roadmap).
+
+---
+
+## 📁 Project Structure
 
 ```bash
-├── src
-│   ├── main
-│   │   └── java       # Production code
-│   ├── test
-│   │   └── java       # JUnit tests
-│   └── benchmark      # Micro‑benchmarks & JMH
-├── docs               # Architecture diagrams & wiki assets
-├── .github
-│   └── workflows      # CI pipelines
-└── build.gradle.kts   # Build script (Kotlin DSL)
-```
 
-> **Why this layout?** It is the default Gradle convention, instantly recognisable to recruiters and CI tools.
+knights-tour-pro/
+├── src/
+│   ├── main/java        # Application source
+│   ├── test/java        # Unit tests (JUnit 5)
+│   └── benchmark/       # Planned: JMH benchmarks
+├── docs/                # Architecture & design docs
+├── .github/workflows/   # CI pipelines (GitHub Actions)
+└── build.gradle.kts     # Gradle build script (Kotlin DSL)
+
+````
+
+Follows Gradle's standard layout — ideal for CI tools and onboarding.
 
 ---
 
-##  Building & Running
+## 🧪 Tests
+
+All critical logic is covered by unit tests, including:
+
+- Solver validation (`BacktrackingSolver`, `WarnsdorffSolver`)
+- Tour type handling (open vs closed)
+- CLI integration (`CLITest`) for realistic scenarios
+
+Run tests with:
 
 ```bash
-# Compile + run tests
+./gradlew test
+````
+
+---
+
+## 🚀 Usage
+
+### 🛠️ Build
+
+```bash
 ./gradlew clean build
-
-# Launch CLI with default settings
-java -jar build/libs/knights-tour.jar --help
 ```
 
-Java 17 or newer is required.
+### 🏁 Run
+
+```bash
+java -jar build/libs/knights-tour-pro-1.0.jar <rows> <cols> <startRow> <startCol> <mode> <tourType> [strategy]
+```
+
+### 📌 Parameters
+
+| Parameter  | Values                    | Required               | Description                           |
+| ---------- | ------------------------- | ---------------------- | ------------------------------------- |
+| `rows`     | `int`                     | ✅                      | Number of board rows                  |
+| `cols`     | `int`                     | ✅                      | Number of board columns               |
+| `startRow` | `int`                     | ✅                      | Starting row (0-based)                |
+| `startCol` | `int`                     | ✅                      | Starting column (0-based)             |
+| `mode`     | `single`, `all`           | ✅                      | One solution or all possible ones     |
+| `tourType` | `open`, `closed`          | ✅                      | Whether the tour returns to the start |
+| `strategy` | `backtrack`, `warnsdorff` | ❌ (default: backtrack) | Solver to use                         |
 
 ---
 
-##  Roadmap
+### ✅ Example: Backtracking, all open tours on 5×5 board
 
-1. **Parallel Fork/Join solver** – configurable thread pool.
-2. **Exact Cover (Algorithm X + DLX)** implementation.
-3. **Benchmark module** with JMH + CSV output.
-4. **JavaFX GUI** with interactive board.
-5. **Docker image + GitHub Pages demo**.
+```bash
+java -jar knights-tour-pro-1.0.jar 5 5 0 0 all open backtrack
+```
 
-See [`docs/ROADMAP.md`](docs/ROADMAP.md) for a detailed timeline.
+### ✅ Example: Warnsdorff heuristic, single open tour on 8×8 board
 
----
+```bash
+java -jar knights-tour-pro-1.0.jar 8 8 0 0 single open warnsdorff
+```
 
-##  Contributing
-
-Pull requests are welcome! Please follow the style guide enforced by Spotless & Checkstyle and ensure all tests pass.
+> Note: `warnsdorff` strategy does **not** support `mode=all`.
 
 ---
 
-##  License
+## 🗺 Roadmap
 
-This project is licensed under the MIT license – see the [LICENSE](LICENSE) file for details.
+Planned features include:
+
+1. 🔄 **Parallel Fork/Join solver**
+2. 🧩 **Exact Cover solver (Algorithm X + DLX)**
+3. 📊 **JMH benchmark module** with CSV export
+4. 🖥 **JavaFX GUI** with interactive board
+5. 🐳 **Docker image** and GitHub Pages demo
+
+Track detailed progress in [`docs/ROADMAP.md`](docs/ROADMAP.md).
+
+---
+
+## 🤝 Contributing
+
+Pull requests are welcome! Please:
+
+- Follow style conventions (Checkstyle, Spotless)
+- Include or update unit tests
+- Ensure all tests pass: `./gradlew test`
+
+---
+
+## 📄 License
+
+Licensed under the [MIT License](LICENSE).
