@@ -1,0 +1,25 @@
+{
+  "metadata": {
+    "strategy": "backtrack",
+    "rows": 5,
+    "startCol": 0,
+    "tourType": "open",
+    "mode": "single",
+    "startRow": 0,
+    "cols": 5
+  },
+  "path": [
+    {
+      "col": 0,
+      "row": 0
+    },
+    {
+      "col": 1,
+      "row": 2
+    },
+    {
+      "col": 2,
+      "row": 0
+    }
+  ]
+}

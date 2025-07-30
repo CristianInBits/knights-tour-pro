@@ -3,8 +3,10 @@ package knights;
 import knights.model.Board;
 import knights.model.Position;
 import knights.solver.*;
+import knights.export.JsonExporter;
 
 import java.util.List;
+import java.util.Map;
 
 public class Main {
     public static void main(String[] args) {
@@ -34,6 +36,15 @@ public class Main {
 
         Board board = new Board(rows, cols);
         Position start = new Position(startRow, startCol);
+
+        Map<String, Object> metadata = Map.of(
+                "rows", rows,
+                "cols", cols,
+                "startRow", startRow,
+                "startCol", startCol,
+                "tourType", tourType,
+                "mode", mode,
+                "strategy", strategy);
 
         if (mode.equalsIgnoreCase("all")) {
             if ("warnsdorff".equalsIgnoreCase(strategy)) {
@@ -72,6 +83,8 @@ public class Main {
                     board.mark(solution.get(i), i);
                 }
                 board.print();
+
+                JsonExporter.export(solution, metadata, "output/tour.json");
             }
         }
     }
