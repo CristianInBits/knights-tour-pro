@@ -13,27 +13,28 @@ import com.google.gson.GsonBuilder;
 /**
  * Exports a knight's tour solution to a JSON file.
  */
-public class JsonExporter {
+public class JsonExporter implements ResultExporter {
 
-    /**
-     * Exports a single solution to JSON format.
-     *
-     * @param path     the sequence of positions visited
-     * @param metadata info like board size, start, tour type
-     * @param filePath output file
-     */
-    public static void export(List<Position> path, Map<String, Object> metadata, String filePath) {
+    @Override
+    public void exportSingle(List<Position> path, Map<String, Object> metadata, String filePath) {
+        exportMultiple(List.of(path), metadata, filePath);
+    }
+
+    @Override
+    public void exportMultiple(List<List<Position>> paths, Map<String, Object> metadata, String filePath) {
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
 
         var output = Map.of(
                 "metadata", metadata,
-                "path", path.stream()
-                        .map(p -> Map.of("row", p.row(), "col", p.col()))
+                "paths", paths.stream()
+                        .map(tour -> tour.stream()
+                                .map(p -> Map.of("row", p.row(), "col", p.col()))
+                                .toList())
                         .toList());
 
         try (FileWriter writer = new FileWriter(filePath)) {
             gson.toJson(output, writer);
-            System.out.println("Tour successfully exported to " + filePath);
+            System.out.println("Tours successfully exported to " + filePath);
         } catch (IOException e) {
             System.err.println("Failed to export JSON: " + e.getMessage());
         }

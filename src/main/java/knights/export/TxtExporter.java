@@ -10,16 +10,15 @@ import java.util.Map;
 /**
  * Exports multiple knight's tour solutions to a TXT file.
  */
-public class TxtExporter {
+public class TxtExporter implements ResultExporter {
 
-    /**
-     * Exports multiple tours to a TXT file.
-     *
-     * @param allPaths list of tours (each is a list of positions)
-     * @param metadata general info about the run
-     * @param filePath output file path
-     */
-    public static void export(List<List<Position>> allPaths, Map<String, Object> metadata, String filePath) {
+    @Override
+    public void exportSingle(List<Position> path, Map<String, Object> metadata, String filePath) {
+        exportMultiple(List.of(path), metadata, filePath);
+    }
+
+    @Override
+    public void exportMultiple(List<List<Position>> allPaths, Map<String, Object> metadata, String filePath) {
         try (FileWriter writer = new FileWriter(filePath)) {
             writer.write("Tour Export\n===============\n");
             for (Map.Entry<String, Object> entry : metadata.entrySet()) {
