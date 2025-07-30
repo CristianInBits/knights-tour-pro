@@ -1,12 +1,12 @@
 Tour Export
 ===============
-startRow: 0
+tourType: closed
 mode: all
-tourType: open
+startRow: 0
+cols: 6
+strategy: backtracking
+rows: 6
 startCol: 0
-rows: 5
-strategy: backtrack
-cols: 5
 
 Found Solutions: 2
 
@@ -16,7 +16,7 @@ Solution #1:
   3: (0,2)
 
 Solution #2:
-  1: (1,0)
-  2: (2,2)
-  3: (0,1)
+  1: (0,0)
+  2: (2,1)
+  3: (0,2)
 

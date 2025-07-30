@@ -2,14 +2,16 @@ package knights;
 
 import knights.model.Board;
 import knights.model.Position;
+
 import knights.solver.*;
-import knights.export.JsonExporter;
-import knights.export.TxtExporter;
+
+import knights.export.*;
 
 import java.util.List;
 import java.util.Map;
 
 public class Main {
+
     public static void main(String[] args) {
         if (args.length < 6) {
             System.out.println(
@@ -38,6 +40,9 @@ public class Main {
         Board board = new Board(rows, cols);
         Position start = new Position(startRow, startCol);
 
+        ResultExporter txtExporter = new TxtExporter();
+        ResultExporter jsonExporter = new JsonExporter();
+
         Map<String, Object> metadata = Map.of(
                 "rows", rows,
                 "cols", cols,
@@ -57,8 +62,6 @@ public class Main {
             List<List<Position>> allSolutions = solver.solveAll();
             System.out.printf("Found %d solutions.%n", allSolutions.size());
 
-            TxtExporter.export(allSolutions, metadata, "output/tours.txt");
-
             int toPrint = Math.min(3, allSolutions.size());
             for (int i = 0; i < toPrint; i++) {
                 System.out.printf("\nSolution #%d:%n", i + 1);
@@ -69,6 +72,10 @@ public class Main {
                 }
                 board.print();
             }
+
+            txtExporter.exportMultiple(allSolutions, metadata, "output/tours.txt");
+            jsonExporter.exportMultiple(allSolutions, metadata, "output/tours.json");
+
         } else {
             TourSolver solver;
             if ("warnsdorff".equalsIgnoreCase(strategy)) {
@@ -87,7 +94,8 @@ public class Main {
                 }
                 board.print();
 
-                JsonExporter.export(solution, metadata, "output/tour.json");
+                txtExporter.exportSingle(solution, metadata, "output/tour.txt");
+                jsonExporter.exportSingle(solution, metadata, "output/tour.json");
             }
         }
     }
