@@ -4,6 +4,7 @@ import knights.model.Board;
 import knights.model.Position;
 import knights.solver.*;
 import knights.export.JsonExporter;
+import knights.export.TxtExporter;
 
 import java.util.List;
 import java.util.Map;
@@ -55,6 +56,8 @@ public class Main {
             BacktrackingAllSolutionsSolver solver = new BacktrackingAllSolutionsSolver(board, start, isClosed);
             List<List<Position>> allSolutions = solver.solveAll();
             System.out.printf("Found %d solutions.%n", allSolutions.size());
+
+            TxtExporter.export(allSolutions, metadata, "output/tours.txt");
 
             int toPrint = Math.min(3, allSolutions.size());
             for (int i = 0; i < toPrint; i++) {

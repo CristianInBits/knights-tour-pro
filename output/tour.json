@@ -1,13 +1,4 @@
 {
-  "metadata": {
-    "strategy": "warnsdorff",
-    "rows": 8,
-    "startCol": 0,
-    "tourType": "open",
-    "mode": "single",
-    "startRow": 0,
-    "cols": 8
-  },
   "path": [
     {
       "col": 0,
@@ -265,5 +256,14 @@
       "col": 4,
       "row": 5
     }
-  ]
+  ],
+  "metadata": {
+    "startRow": 0,
+    "mode": "single",
+    "tourType": "open",
+    "startCol": 0,
+    "rows": 8,
+    "strategy": "warnsdorff",
+    "cols": 8
+  }
 }
