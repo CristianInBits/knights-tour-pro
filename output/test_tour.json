@@ -1,13 +1,4 @@
 {
-  "metadata": {
-    "strategy": "backtrack",
-    "rows": 5,
-    "startCol": 0,
-    "tourType": "open",
-    "mode": "single",
-    "startRow": 0,
-    "cols": 5
-  },
   "path": [
     {
       "col": 0,
@@ -21,5 +12,14 @@
       "col": 2,
       "row": 0
     }
-  ]
+  ],
+  "metadata": {
+    "startRow": 0,
+    "mode": "single",
+    "tourType": "open",
+    "startCol": 0,
+    "rows": 5,
+    "strategy": "backtrack",
+    "cols": 5
+  }
 }
