@@ -23,8 +23,8 @@ High-performance, modular solver for the Knight's Tour problem — built to demo
 | Closed vs Open tour modes | ✅     |
 | Basic CLI testing         | ✅     |
 | Strategy selection via CLI| ✅     |
-| JSON/TXT export           | 🚧 (Planned) |
-| Benchmark module (JMH)    | 🚧 (Planned) |
+| JSON/TXT export           | ✅     |
+| Benchmark module (JMH)    | ✅     |
 
 > Planned items are tracked in the [Roadmap](#roadmap).
 
@@ -56,12 +56,32 @@ All critical logic is covered by unit tests, including:
 - Solver validation (`BacktrackingSolver`, `WarnsdorffSolver`)
 - Tour type handling (open vs closed)
 - CLI integration (`CLITest`) for realistic scenarios
+- Exporters validation (JSON/TXT output correctness)
 
 Run tests with:
 
 ```bash
 ./gradlew test
 ````
+
+---
+
+## 📊 Benchmark Report
+
+The project includes a JMH Benchmark module comparing solver performance.
+
+See: [`docs/Knights Tour Pro - Benchmark Report (JMH).md`](docs/Knights%20Tour%20Pro%20-%20Benchmark%20Report%20(JMH).md)
+
+Sample benchmark modes:
+
+- Throughput measurement for BacktrackingSolver (5x5, 6x6)
+- Heuristic performance with WarnsdorffSolver
+
+Run benchmarks with:
+
+```bash
+./gradlew jmh
+```
 
 ---
 
