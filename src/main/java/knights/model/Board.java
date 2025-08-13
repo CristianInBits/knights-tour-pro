@@ -15,6 +15,16 @@ public class Board {
 
     public static final int UNVISITED = -1;
 
+    public Board(Board other) {
+        this.rows = other.rows;
+        this.cols = other.cols;
+        this.path = new int[rows][cols];
+        for (int i = 0; i < rows; i++) {
+            System.arraycopy(other.path[i], 0, this.path[i], 0, cols);
+        }
+        this.steps = other.steps;
+    }
+
     public Board(int rows, int cols) {
         this.rows = rows;
         this.cols = cols;
