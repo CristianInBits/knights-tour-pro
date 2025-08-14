@@ -1,12 +1,12 @@
 Tour Export
 ===============
 startCol: 0
-rows: 5
-strategy: backtrack
-cols: 5
-startRow: 0
-mode: all
 tourType: open
+mode: all
+startRow: 0
+cols: 5
+strategy: parallel
+rows: 5
 
 Found Solutions: 304
 
