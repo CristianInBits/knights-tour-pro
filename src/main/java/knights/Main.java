@@ -60,7 +60,9 @@ public class Main {
                 System.out.println("Warnsdorff strategy does not support generating all solutions.");
                 return;
             } else if ("parallel".equalsIgnoreCase(strategy)) {
-                ParallelBacktrackingSolver solver = new ParallelBacktrackingSolver(board, start, isClosed);
+                System.out.println(
+                        "Parallel strategy does not support 'all' mode yet. Falling back to backtracking all.");
+                BacktrackingAllSolutionsSolver solver = new BacktrackingAllSolutionsSolver(board, start, isClosed);
                 allSolutions = solver.solveAll();
             } else {
                 BacktrackingAllSolutionsSolver solver = new BacktrackingAllSolutionsSolver(board, start, isClosed);
@@ -90,8 +92,8 @@ public class Main {
             if ("warnsdorff".equalsIgnoreCase(strategy)) {
                 solver = new WarnsdorffSolver(board, start, isClosed);
             } else if ("parallel".equalsIgnoreCase(strategy)) {
-                // Parallel solver para una sola solución
-                ParallelBacktrackingSolver psolver = new ParallelBacktrackingSolver(board, start, isClosed);
+                int forkDepth = 2; // o léelo de args/env si quieres
+                ParallelBacktrackingSolver psolver = new ParallelBacktrackingSolver(board, start, isClosed, forkDepth);
                 List<Position> solution = psolver.solve();
                 handleSingleResult(board, solution, txtExporter, jsonExporter, metadata);
                 return;
