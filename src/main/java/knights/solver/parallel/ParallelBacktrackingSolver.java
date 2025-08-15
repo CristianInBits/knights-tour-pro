@@ -15,32 +15,42 @@ public class ParallelBacktrackingSolver implements TourSolver {
     private final Position start;
     private final boolean closed;
     private final int forkDepth;
+    private final ForkJoinPool pool;
 
     public ParallelBacktrackingSolver(Board board, Position start, boolean closed, int forkDepth) {
+        this(board, start, closed, forkDepth, null);
+    }
+
+    public ParallelBacktrackingSolver(Board board, Position start, boolean closed, int forkDepth, ForkJoinPool pool) {
         if (!board.isInside(start))
             throw new IllegalArgumentException("Start outside board");
         this.board = board;
         this.start = start;
         this.closed = closed;
         this.forkDepth = Math.max(0, forkDepth);
+        this.pool = (pool != null) ? pool : ForkJoinPool.commonPool();
     }
 
     @Override
     public List<Position> solve() {
-        return ForkJoinPool.commonPool().invoke(new Task(board, start, new ArrayList<>(), 0));
+        return pool.invoke(new Task(board, start, new ArrayList<>(), 0, closed, forkDepth));
     }
 
-    private final class Task extends RecursiveTask<List<Position>> {
-        private final Board b; // copia local para esta rama paralela
+    private static final class Task extends RecursiveTask<List<Position>> {
+        private final Board b; // copia local de Board para esta Task
         private final Position pos;
         private final List<Position> path; // copia local del camino
         private final int depth;
+        private final boolean closed;
+        private final int forkDepth;
 
-        Task(Board board, Position pos, List<Position> path, int depth) {
+        Task(Board board, Position pos, List<Position> path, int depth, boolean closed, int forkDepth) {
             this.b = new Board(board); // copia profunda SOLO al crear la Task
             this.pos = pos;
             this.path = new ArrayList<>(path);
             this.depth = depth;
+            this.closed = closed;
+            this.forkDepth = forkDepth;
         }
 
         @Override
@@ -49,13 +59,11 @@ public class ParallelBacktrackingSolver implements TourSolver {
             b.mark(pos, path.size() - 1);
 
             if (path.size() == b.totalCells()) {
-                if (!closed || path.get(0).isAdjacent(path.get(path.size() - 1))) {
-                    return new ArrayList<>(path); // devolver copia defensiva
-                }
-                return null;
+                return (!closed || path.get(0).isAdjacent(path.get(path.size() - 1)))
+                        ? new ArrayList<>(path)
+                        : null;
             }
 
-            // movimientos legales SIN heurística
             List<Position> next = knights.model.KnightMove.generateNextPositions(pos).stream()
                     .filter(p -> b.isInside(p) && !b.isVisited(p))
                     .toList();
@@ -64,12 +72,11 @@ public class ParallelBacktrackingSolver implements TourSolver {
                 return null;
 
             if (depth < forkDepth) {
-                // TRAMO PARALELO: forkeamos hijos
                 List<Task> tasks = new ArrayList<>(next.size());
-                for (Position move : next)
-                    tasks.add(new Task(b, move, path, depth + 1));
+                for (Position move : next) {
+                    tasks.add(new Task(b, move, path, depth + 1, closed, forkDepth)); // <-- aquí estaba el error
+                }
                 invokeAll(tasks);
-                // devolvemos la PRIMERA solución que aparezca
                 for (Task t : tasks) {
                     List<Position> sol = t.join();
                     if (sol != null)
@@ -77,12 +84,11 @@ public class ParallelBacktrackingSolver implements TourSolver {
                 }
                 return null;
             } else {
-                // TRAMO SECUENCIAL: backtracking in‑place SIN crear Tasks nuevas
                 return dfsSequential(b, path, closed);
             }
         }
 
-        private List<Position> dfsSequential(Board board, List<Position> path, boolean closed) {
+        private static List<Position> dfsSequential(Board board, List<Position> path, boolean closed) {
             if (path.size() == board.totalCells()) {
                 return (!closed || path.get(0).isAdjacent(path.get(path.size() - 1)))
                         ? new ArrayList<>(path)
@@ -111,4 +117,5 @@ public class ParallelBacktrackingSolver implements TourSolver {
             return null;
         }
     }
+
 }
