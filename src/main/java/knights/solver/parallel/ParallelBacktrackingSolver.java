@@ -14,83 +14,108 @@ public class ParallelBacktrackingSolver implements TourSolver {
     private final Board board;
     private final Position start;
     private final boolean closed;
-    private final int forkDepth = 2;
+    private final int forkDepth;
+    private final ForkJoinPool pool;
 
-    public ParallelBacktrackingSolver(Board board, Position start, boolean closed) {
+    public ParallelBacktrackingSolver(Board board, Position start, boolean closed, int forkDepth) {
+        this(board, start, closed, forkDepth, null);
+    }
+
+    public ParallelBacktrackingSolver(Board board, Position start, boolean closed, int forkDepth, ForkJoinPool pool) {
+        if (!board.isInside(start))
+            throw new IllegalArgumentException("Start outside board");
         this.board = board;
         this.start = start;
         this.closed = closed;
+        this.forkDepth = Math.max(0, forkDepth);
+        this.pool = (pool != null) ? pool : ForkJoinPool.commonPool();
     }
 
     @Override
     public List<Position> solve() {
-        ForkJoinPool pool = new ForkJoinPool();
-        try {
-            List<List<Position>> all = pool.invoke(new Task(board, start, new ArrayList<>(), 0));
-            return all.isEmpty() ? List.of() : all.get(0);
-        } finally {
-            pool.shutdown();
-        }
+        return pool.invoke(new Task(board, start, new ArrayList<>(), 0, closed, forkDepth));
     }
 
-    public List<List<Position>> solveAll() {
-        ForkJoinPool pool = new ForkJoinPool();
-        try {
-            return pool.invoke(new Task(board, start, new ArrayList<>(), 0));
-        } finally {
-            pool.shutdown();
-        }
-    }
-
-    private class Task extends RecursiveTask<List<List<Position>>> {
-        private final Board board;
+    private static final class Task extends RecursiveTask<List<Position>> {
+        private final Board b; // copia local de Board para esta Task
         private final Position pos;
-        private final List<Position> path;
+        private final List<Position> path; // copia local del camino
         private final int depth;
+        private final boolean closed;
+        private final int forkDepth;
 
-        Task(Board board, Position pos, List<Position> path, int depth) {
-            this.board = new Board(board); // copia profunda
+        Task(Board board, Position pos, List<Position> path, int depth, boolean closed, int forkDepth) {
+            this.b = new Board(board); // copia profunda SOLO al crear la Task
             this.pos = pos;
             this.path = new ArrayList<>(path);
             this.depth = depth;
+            this.closed = closed;
+            this.forkDepth = forkDepth;
         }
 
         @Override
-        protected List<List<Position>> compute() {
+        protected List<Position> compute() {
             path.add(pos);
-            board.mark(pos, path.size() - 1);
+            b.mark(pos, path.size() - 1);
 
-            if (path.size() == board.totalCells()) {
-                if (!closed || path.get(0).isAdjacent(path.get(path.size() - 1))) {
-                    return List.of(path);
-                } else {
-                    return List.of();
-                }
+            if (path.size() == b.totalCells()) {
+                return (!closed || path.get(0).isAdjacent(path.get(path.size() - 1)))
+                        ? new ArrayList<>(path)
+                        : null;
             }
 
             List<Position> next = knights.model.KnightMove.generateNextPositions(pos).stream()
-                    .filter(p -> board.isInside(p) && !board.isVisited(p))
+                    .filter(p -> b.isInside(p) && !b.isVisited(p))
                     .toList();
 
-            List<List<Position>> results = new ArrayList<>();
+            if (next.isEmpty())
+                return null;
 
             if (depth < forkDepth) {
-                List<Task> tasks = new ArrayList<>();
+                List<Task> tasks = new ArrayList<>(next.size());
                 for (Position move : next) {
-                    tasks.add(new Task(board, move, path, depth + 1));
+                    tasks.add(new Task(b, move, path, depth + 1, closed, forkDepth)); // <-- aquí estaba el error
                 }
                 invokeAll(tasks);
                 for (Task t : tasks) {
-                    results.addAll(t.join());
+                    List<Position> sol = t.join();
+                    if (sol != null)
+                        return sol;
                 }
+                return null;
             } else {
-                for (Position move : next) {
-                    Task t = new Task(board, move, path, depth + 1);
-                    results.addAll(t.compute());
-                }
+                return dfsSequential(b, path, closed);
             }
+        }
 
-            return results;
+        private static List<Position> dfsSequential(Board board, List<Position> path, boolean closed) {
+            if (path.size() == board.totalCells()) {
+                return (!closed || path.get(0).isAdjacent(path.get(path.size() - 1)))
+                        ? new ArrayList<>(path)
+                        : null;
+            }
+            Position cur = path.get(path.size() - 1);
+
+            for (int i = 0; i < knights.model.KnightMove.TOTAL_MOVES; i++) {
+                int r = cur.row() + knights.model.KnightMove.DX[i];
+                int c = cur.col() + knights.model.KnightMove.DY[i];
+                Position nxt = new Position(r, c);
+                if (!board.isInside(nxt) || board.isVisited(nxt))
+                    continue;
+
+                int step = path.size();
+                path.add(nxt);
+                board.mark(nxt, step);
+
+                List<Position> sol = dfsSequential(board, path, closed);
+                if (sol != null)
+                    return sol;
+
+                board.unmark(nxt);
+                path.remove(path.size() - 1);
+            }
+            return null;
         }
     }
+
 }

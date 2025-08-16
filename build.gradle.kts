@@ -21,10 +21,15 @@ repositories {
 }
 
 dependencies {
+    // App
     implementation("com.google.code.gson:gson:2.10.1")
+
+    // Tests
     testImplementation("org.junit.jupiter:junit-jupiter:5.10.0")
+
+    // JMH (benchmarks src/jmh/java/**)
     jmh("org.openjdk.jmh:jmh-core:1.37")
-    jmh("org.openjdk.jmh:jmh-generator-annprocess:1.37")
+    jmhAnnotationProcessor("org.openjdk.jmh:jmh-generator-annprocess:1.37")
 }
 
 application {
@@ -50,4 +55,7 @@ jmh {
     fork.set(1)
     benchmarkMode.set(listOf("Throughput"))
     timeUnit.set("ms")
+    // includes.set(listOf("knights\\.benchmark\\..*"))
+    // resultFormat.set("CSV")
+    // result.set(layout.buildDirectory.file("reports/jmh/results.csv").get().asFile.path)
 }
