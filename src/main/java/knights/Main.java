@@ -6,7 +6,6 @@ import knights.export.TxtExporter;
 import knights.model.Board;
 import knights.model.Position;
 import knights.solver.*;
-import knights.solver.parallel.*;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
