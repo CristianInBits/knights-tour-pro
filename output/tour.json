@@ -1,13 +1,13 @@
 {
   "metadata": {
-    "rows": 6,
-    "cols": 6,
+    "rows": 5,
+    "cols": 5,
     "startRow": 0,
     "startCol": 0,
     "tourType": "open",
     "mode": "single",
-    "strategy": "backtrack",
-    "timestamp": "2025-08-16 22:38:24"
+    "strategy": "warnsdorff",
+    "timestamp": "2025-08-17 11:43:04"
   },
   "paths": [
     [
@@ -25,107 +25,11 @@
       },
       {
         "row": 2,
-        "col": 5
-      },
-      {
-        "row": 4,
-        "col": 4
-      },
-      {
-        "row": 5,
-        "col": 2
-      },
-      {
-        "row": 3,
-        "col": 3
-      },
-      {
-        "row": 1,
-        "col": 4
-      },
-      {
-        "row": 3,
-        "col": 5
-      },
-      {
-        "row": 5,
-        "col": 4
-      },
-      {
-        "row": 4,
-        "col": 2
-      },
-      {
-        "row": 2,
-        "col": 3
-      },
-      {
-        "row": 1,
-        "col": 5
-      },
-      {
-        "row": 3,
-        "col": 4
-      },
-      {
-        "row": 5,
-        "col": 5
-      },
-      {
-        "row": 4,
-        "col": 3
-      },
-      {
-        "row": 5,
-        "col": 1
-      },
-      {
-        "row": 3,
-        "col": 0
-      },
-      {
-        "row": 1,
-        "col": 1
-      },
-      {
-        "row": 0,
-        "col": 3
-      },
-      {
-        "row": 2,
-        "col": 2
-      },
-      {
-        "row": 4,
-        "col": 1
-      },
-      {
-        "row": 5,
         "col": 3
       },
       {
         "row": 4,
-        "col": 5
-      },
-      {
-        "row": 2,
         "col": 4
-      },
-      {
-        "row": 0,
-        "col": 5
-      },
-      {
-        "row": 1,
-        "col": 3
-      },
-      {
-        "row": 0,
-        "col": 1
-      },
-      {
-        "row": 2,
-        "col": 0
       },
       {
         "row": 3,
@@ -145,15 +49,67 @@
       },
       {
         "row": 1,
+        "col": 4
+      },
+      {
+        "row": 3,
+        "col": 3
+      },
+      {
+        "row": 4,
+        "col": 1
+      },
+      {
+        "row": 2,
         "col": 0
+      },
+      {
+        "row": 0,
+        "col": 1
+      },
+      {
+        "row": 1,
+        "col": 3
+      },
+      {
+        "row": 3,
+        "col": 4
+      },
+      {
+        "row": 4,
+        "col": 2
+      },
+      {
+        "row": 3,
+        "col": 0
+      },
+      {
+        "row": 1,
+        "col": 1
+      },
+      {
+        "row": 0,
+        "col": 3
+      },
+      {
+        "row": 2,
+        "col": 4
+      },
+      {
+        "row": 4,
+        "col": 3
       },
       {
         "row": 3,
         "col": 1
       },
       {
-        "row": 5,
+        "row": 1,
         "col": 0
+      },
+      {
+        "row": 2,
+        "col": 2
       }
     ]
   ]
