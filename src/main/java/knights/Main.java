@@ -13,6 +13,7 @@ import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.concurrent.ForkJoinPool;
 
 /**
  * CLI entry point for Knight's Tour.
@@ -25,11 +26,13 @@ import java.util.*;
  * - strategy (optional): backtrack (default) | warnsdorff | parallel
  *
  * Optional flags (order-agnostic, after the positional args):
- * --limit N : limit how many solutions are printed to console in 'all' mode
- * (default: 3)
+ * --limit N : limit how many solutions are printed in 'all' mode (default: 3)
  * --out DIR : base output directory (default: output)
  * --no-print : do not print board(s) to console
  * --no-export : do not write TXT/JSON files
+ * --fork-depth N : parallel backtracking fork depth (default: 2)
+ * --pool N : create a custom ForkJoinPool with parallelism N (default: common
+ * pool)
  */
 public final class Main {
 
@@ -67,6 +70,10 @@ public final class Main {
         boolean printBoards = true; // console printing
         boolean doExport = true; // write files
 
+        // Parallel-specific tuning (defaults)
+        int forkDepth = 2; // sensible default for parallel
+        Integer poolParallelism = null; // null => use common pool
+
         if (args.length > 7) {
             for (int i = 7; i < args.length; i++) {
                 String a = args[i];
@@ -77,39 +84,65 @@ public final class Main {
                     continue;
 
                 if (a.startsWith("--limit")) {
-                    // --limit or --limit=5 or "--limit 5"
-                    String val = null;
-                    if (a.contains("=")) {
-                        val = a.substring(a.indexOf('=') + 1);
-                    } else if (i + 1 < args.length && !args[i + 1].startsWith("--")) {
-                        val = args[++i];
-                    }
+                    String val = readFlagValue(a, (i + 1 < args.length) ? args[i + 1] : null);
                     if (val == null) {
                         System.err.println("Missing value for --limit");
                         return;
                     }
                     try {
                         limitToPrint = Math.max(0, Integer.parseInt(val));
+                        if (!a.contains("="))
+                            i++;
                     } catch (NumberFormatException nfe) {
                         System.err.println("Invalid --limit value: " + val);
                         return;
                     }
                 } else if (a.startsWith("--out")) {
-                    String val = null;
-                    if (a.contains("=")) {
-                        val = a.substring(a.indexOf('=') + 1);
-                    } else if (i + 1 < args.length && !args[i + 1].startsWith("--")) {
-                        val = args[++i];
-                    }
+                    String val = readFlagValue(a, (i + 1 < args.length) ? args[i + 1] : null);
                     if (val == null || val.isBlank()) {
                         System.err.println("Missing value for --out");
                         return;
                     }
                     outDir = val;
+                    if (!a.contains("="))
+                        i++;
                 } else if ("--no-print".equalsIgnoreCase(a)) {
                     printBoards = false;
                 } else if ("--no-export".equalsIgnoreCase(a)) {
                     doExport = false;
+                } else if (a.startsWith("--fork-depth")) {
+                    String val = readFlagValue(a, (i + 1 < args.length) ? args[i + 1] : null);
+                    if (val == null) {
+                        System.err.println("Missing value for --fork-depth");
+                        return;
+                    }
+                    try {
+                        forkDepth = Math.max(0, Integer.parseInt(val));
+                        if (!a.contains("="))
+                            i++;
+                    } catch (NumberFormatException nfe) {
+                        System.err.println("Invalid --fork-depth value: " + val);
+                        return;
+                    }
+                } else if (a.startsWith("--pool")) {
+                    String val = readFlagValue(a, (i + 1 < args.length) ? args[i + 1] : null);
+                    if (val == null) {
+                        System.err.println("Missing value for --pool");
+                        return;
+                    }
+                    try {
+                        int p = Integer.parseInt(val);
+                        if (p <= 0) {
+                            System.err.println("--pool must be > 0");
+                            return;
+                        }
+                        poolParallelism = p;
+                        if (!a.contains("="))
+                            i++;
+                    } catch (NumberFormatException nfe) {
+                        System.err.println("Invalid --pool value: " + val);
+                        return;
+                    }
                 } else {
                     System.err.println("Unknown flag: " + a);
                     printUsage();
@@ -150,6 +183,11 @@ public final class Main {
         metadata.put("tourType", isClosed ? "closed" : "open");
         metadata.put("mode", mode);
         metadata.put("strategy", strategy);
+        // Add parallel-specific metadata when relevant
+        if ("parallel".equals(strategy)) {
+            metadata.put("forkDepth", forkDepth);
+            metadata.put("pool", (poolParallelism == null) ? "common" : poolParallelism);
+        }
         metadata.put("timestamp", ts);
 
         System.out.printf("Board: %dx%d | Start: (%d,%d) | Mode: %s | Tour: %s | Strategy: %s%n",
@@ -185,7 +223,7 @@ public final class Main {
             System.out.printf("Found %d solution(s) in %.3f ms.%n",
                     allSolutions.size(), (t1 - t0) / 1e6);
 
-            // Print first N solutions (re-markboard for pretty print)
+            // Print first N solutions (re-mark board for pretty print)
             if (printBoards && limitToPrint > 0) {
                 int toPrint = Math.min(limitToPrint, allSolutions.size());
                 for (int i = 0; i < toPrint; i++) {
@@ -200,7 +238,6 @@ public final class Main {
             }
 
             if (doExport) {
-                // output/tours.txt and output/tours.json (keep stable naming)
                 Path txt = outBase.resolve("tours.txt");
                 Path json = outBase.resolve("tours.json");
                 txtExporter.exportMultiple(allSolutions, metadata, txt.toString());
@@ -209,8 +246,31 @@ public final class Main {
 
         } else { // single
             List<Position> solution;
-            TourSolver solver = buildSingleSolver(strategy, board, start, isClosed);
-            solution = solver.solve();
+            // Special-case 'parallel' to pass forkDepth & optional custom pool
+            if ("parallel".equals(strategy)) {
+                ForkJoinPool customPool = null;
+                try {
+                    TourSolver solver;
+                    if (poolParallelism != null) {
+                        // Create a dedicated pool with the requested parallelism
+                        customPool = new ForkJoinPool(poolParallelism);
+                        solver = new ParallelBacktrackingSolver(board, start, isClosed, forkDepth, customPool);
+                    } else {
+                        // Use common pool
+                        solver = new ParallelBacktrackingSolver(board, start, isClosed, forkDepth);
+                    }
+                    solution = solver.solve();
+                } finally {
+                    // If we created a custom pool, we should shut it down
+                    if (customPool != null)
+                        customPool.shutdown();
+                }
+            } else {
+                // Backtrack / Warnsdorff unchanged
+                TourSolver solver = buildSingleSolver(strategy, board, start, isClosed);
+                solution = solver.solve();
+            }
+
             long t1 = System.nanoTime();
 
             if (solution.isEmpty()) {
@@ -230,7 +290,6 @@ public final class Main {
             }
 
             if (doExport) {
-                // output/tour.txt and output/tour.json
                 Path txt = outBase.resolve("tour.txt");
                 Path json = outBase.resolve("tour.json");
                 txtExporter.exportSingle(solution, metadata, txt.toString());
@@ -249,22 +308,35 @@ public final class Main {
         System.out.println("  strategy : backtrack (default) | warnsdorff | parallel");
         System.out.println();
         System.out.println("Optional flags:");
-        System.out.println("  --limit N    : limit how many solutions are printed in 'all' mode (default: 3)");
-        System.out.println("  --out DIR    : base output directory (default: output)");
-        System.out.println("  --no-print   : do not print board(s) to console");
-        System.out.println("  --no-export  : do not write TXT/JSON files");
+        System.out.println("  --limit N       : limit how many solutions are printed in 'all' mode (default: 3)");
+        System.out.println("  --out DIR       : base output directory (default: output)");
+        System.out.println("  --no-print      : do not print board(s) to console");
+        System.out.println("  --no-export     : do not write TXT/JSON files");
+        System.out.println("  --fork-depth N  : parallel backtracking fork depth (default: 2)");
+        System.out
+                .println("  --pool N        : create a custom ForkJoinPool with parallelism N (default: common pool)");
+    }
+
+    private static String readFlagValue(String flagToken, String nextToken) {
+        // Accept both "--name=value" and "--name value"
+        if (flagToken.contains("=")) {
+            return flagToken.substring(flagToken.indexOf('=') + 1);
+        } else if (nextToken != null && !nextToken.startsWith("--")) {
+            return nextToken;
+        }
+        return null;
     }
 
     /**
-     * Build a solver for 'single' mode.
+     * Build a solver for 'single' mode (non-parallel strategies).
      */
     private static TourSolver buildSingleSolver(String strategy, Board board, Position start, boolean isClosed) {
         switch (strategy) {
             case "warnsdorff":
                 return new WarnsdorffSolver(board, start, isClosed);
             case "parallel":
-                // If you have a configurable forkDepth, read from env/flag; using 2 as a
-                // sensible default.
+                // Not used in this overload (handled in caller to pass forkDepth/pool)
+                // Kept for backward compatibility.
                 int forkDepth = 2;
                 return new ParallelBacktrackingSolver(board, start, isClosed, forkDepth);
             case "backtrack":
@@ -282,7 +354,6 @@ public final class Main {
             case "backtrack":
                 return new BacktrackingAllSolutionsSolver(board, start, isClosed);
             case "parallel":
-                // parallel all-solutions solver, return it here.
                 System.out.println("Parallel strategy does not support 'all' mode yet. Falling back is disabled.");
                 return null;
             case "warnsdorff":
