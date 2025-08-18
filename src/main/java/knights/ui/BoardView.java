@@ -3,9 +3,9 @@ package knights.ui;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.geometry.HPos;
+import javafx.geometry.Pos;
 import javafx.geometry.VPos;
-import javafx.scene.layout.GridPane;
-import javafx.scene.layout.StackPane;
+import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Text;
@@ -25,28 +25,45 @@ public class BoardView extends GridPane {
         setVgap(1);
         setStyle("-fx-background-color: #222;");
         setPrefSize(640, 640);
+        setMinSize(200, 200);
+        setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
     }
 
     public void initGrid(int rows, int cols) {
         this.rows = rows;
         this.cols = cols;
-        getChildren().clear();
-        cells = new Cell[rows][cols];
 
+        getChildren().clear();
+        getColumnConstraints().clear();
+        getRowConstraints().clear();
+
+        for (int c = 0; c < cols; c++) {
+            ColumnConstraints cc = new ColumnConstraints();
+            cc.setPercentWidth(100.0 / cols);
+            cc.setHalignment(HPos.CENTER);
+            cc.setHgrow(Priority.ALWAYS);
+            cc.setFillWidth(true);
+            getColumnConstraints().add(cc);
+        }
+        for (int r = 0; r < rows; r++) {
+            RowConstraints rc = new RowConstraints();
+            rc.setPercentHeight(100.0 / rows);
+            rc.setValignment(VPos.CENTER);
+            rc.setVgrow(Priority.ALWAYS);
+            rc.setFillHeight(true);
+            getRowConstraints().add(rc);
+        }
+
+        cells = new Cell[rows][cols];
         for (int r = 0; r < rows; r++) {
             for (int c = 0; c < cols; c++) {
                 Cell cell = new Cell(((r + c) % 2 == 0) ? Color.web("#fafafa") : Color.web("#d0d0d0"));
                 cells[r][c] = cell;
                 add(cell.root, c, r);
-                GridPane.setHalignment(cell.root, HPos.CENTER);
-                GridPane.setValignment(cell.root, VPos.CENTER);
+                GridPane.setHgrow(cell.root, Priority.ALWAYS);
+                GridPane.setVgrow(cell.root, Priority.ALWAYS);
             }
         }
-
-        // Ajuste responsive: cada celda del mismo tamaño dentro del grid
-        widthProperty().addListener((obs, ov, nv) -> resizeCells());
-        heightProperty().addListener((obs, ov, nv) -> resizeCells());
-        resizeCells();
     }
 
     public void clearMarks() {
@@ -74,7 +91,7 @@ public class BoardView extends GridPane {
             final int sc = p.col();
             final int index = step;
 
-            KeyFrame kf = new KeyFrame(Duration.millis(index * msPerStep), e -> {
+            KeyFrame kf = new KeyFrame(Duration.millis((long) index * msPerStep), e -> {
                 Cell cell = cells[sr][sc];
                 cell.mark(index + 1);
             });
@@ -83,18 +100,6 @@ public class BoardView extends GridPane {
         }
         timeline.setCycleCount(1);
         timeline.playFromStart();
-    }
-
-    private void resizeCells() {
-        if (cells == null || rows == 0 || cols == 0)
-            return;
-        double w = getWidth() > 0 ? getWidth() : getPrefWidth();
-        double h = getHeight() > 0 ? getHeight() : getPrefHeight();
-        double cellSize = Math.floor(Math.min((w - (cols - 1)) / cols, (h - (rows - 1)) / rows));
-
-        for (int r = 0; r < rows; r++)
-            for (int c = 0; c < cols; c++)
-                cells[r][c].resize(cellSize);
     }
 
     // ---- cell ----
@@ -108,17 +113,30 @@ public class BoardView extends GridPane {
 
         Cell(Color base) {
             this.base = base;
+
+            root.setAlignment(Pos.CENTER);
+            root.setMinSize(0, 0);
+            root.setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
+
+            rect.widthProperty().bind(root.widthProperty());
+            rect.heightProperty().bind(root.heightProperty());
             rect.setArcWidth(8);
             rect.setArcHeight(8);
             rect.setFill(base);
             rect.setStroke(Color.web("#888"));
+
+            text.setManaged(true);
+            StackPane.setAlignment(text, Pos.CENTER);
+
+            root.widthProperty().addListener((o, ov, nv) -> updateFont());
+            root.heightProperty().addListener((o, ov, nv) -> updateFont());
+
             root.getChildren().addAll(rect, text);
         }
 
-        void resize(double size) {
-            rect.setWidth(size);
-            rect.setHeight(size);
-            text.setStyle("-fx-font-size: " + Math.max(12, (int) (size * 0.33)) + "px; -fx-font-weight: bold;");
+        void updateFont() {
+            double s = Math.max(12, Math.min(root.getWidth(), root.getHeight()) * 0.33);
+            text.setStyle("-fx-font-size: " + (int) s + "px; -fx-font-weight: bold;");
         }
 
         void mark(int step) {

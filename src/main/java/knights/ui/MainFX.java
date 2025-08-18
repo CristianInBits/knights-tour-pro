@@ -33,29 +33,40 @@ public class MainFX extends Application {
         root.setCenter(boardView);
 
         controls.setOnRun(cfg -> {
+            controls.setRunning(true); 
             Platform.runLater(() -> boardView.initGrid(cfg.rows(), cfg.cols()));
 
             CompletableFuture
                     .supplyAsync(() -> compute(cfg))
-                    .thenAccept(result -> Platform.runLater(() -> {
-                        if (result == null || result.path().isEmpty()) {
-                            controls.showMessage("No solution found.");
-                            return;
-                        }
-                        // Animar
-                        boardView.clearMarks();
-                        boardView.animate(result.path(), cfg.msPerStep());
-
-                        if (cfg.export()) {
-                            ResultExporter txt = new TxtExporter();
-                            ResultExporter json = new JsonExporter();
-                            try {
-                                txt.exportSingle(result.path(), result.metadata(), cfg.exportDir() + "/tour.txt");
-                                json.exportSingle(result.path(), result.metadata(), cfg.exportDir() + "/tour.json");
-                                controls.showMessage("Exported to " + cfg.exportDir());
-                            } catch (Exception ex) {
-                                controls.showMessage("Export error: " + ex.getMessage());
+                    .whenComplete((result, error) -> Platform.runLater(() -> {
+                        try {
+                            if (error != null) {
+                                controls.showMessage("Error: " + error.getMessage());
+                                return;
                             }
+                            if (result == null || result.path().isEmpty()) {
+                                controls.showMessage("No solution found.");
+                                return;
+                            }
+                            
+                            boardView.clearMarks();
+                            boardView.animate(result.path(), cfg.msPerStep());
+
+                            if (cfg.export()) {
+                                ResultExporter txt = new TxtExporter();
+                                ResultExporter json = new JsonExporter();
+                                try {
+                                    txt.exportSingle(result.path(), result.metadata(), cfg.exportDir() + "/tour.txt");
+                                    json.exportSingle(result.path(), result.metadata(), cfg.exportDir() + "/tour.json");
+                                    controls.showMessage("Exported to " + cfg.exportDir());
+                                } catch (Exception ex) {
+                                    controls.showMessage("Export error: " + ex.getMessage());
+                                }
+                            } else {
+                                controls.showMessage("Done");
+                            }
+                        } finally {
+                            controls.setRunning(false);
                         }
                     }));
         });
