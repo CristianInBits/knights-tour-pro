@@ -1,3 +1,5 @@
+import org.gradle.jvm.toolchain.JavaLanguageVersion
+
 plugins {
     java
     application
@@ -58,10 +60,22 @@ tasks.shadowJar {
 tasks.register<JavaExec>("runFx") {
     group = "application"
     description = "Run JavaFX UI"
-    classpath = sourceSets["main"].runtimeClasspath
+
     mainClass.set("knights.ui.MainFX")
-    // Linux/macOS
-    // jvmArgs = listOf("--add-opens=javafx.graphics/com.sun.javafx.tk=ALL-UNNAMED")
+
+    javaLauncher.set(javaToolchains.launcherFor {
+        languageVersion.set(JavaLanguageVersion.of(17))
+    })
+
+    val runtimeCp = sourceSets["main"].runtimeClasspath
+    classpath = runtimeCp
+
+    doFirst {
+        jvmArgs(
+            "--module-path", runtimeCp.asPath,
+            "--add-modules", "javafx.controls,javafx.graphics"
+        )
+    }
 }
 
 jmh {
