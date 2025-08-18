@@ -3,6 +3,7 @@ plugins {
     application
     id("me.champeau.jmh") version "0.7.2"
     id("com.github.johnrengelman.shadow") version "8.1.1"
+    id("org.openjfx.javafxplugin") version "0.0.13"
 }
 
 group = "knights"
@@ -11,6 +12,11 @@ version = "1.0.0"
 java {
     // Use the same Java version everywhere (IDE/CI/Gradle)
     toolchain { languageVersion.set(JavaLanguageVersion.of(17)) }
+}
+
+javafx {
+    version = "17"
+    modules = listOf("javafx.controls", "javafx.graphics")
 }
 
 repositories {
@@ -47,6 +53,15 @@ tasks.jar {
 tasks.shadowJar {
     // Create an all-in-one JAR: build/libs/<name>-all.jar
     archiveClassifier.set("all")
+}
+
+tasks.register<JavaExec>("runFx") {
+    group = "application"
+    description = "Run JavaFX UI"
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("knights.ui.MainFX")
+    // Linux/macOS
+    // jvmArgs = listOf("--add-opens=javafx.graphics/com.sun.javafx.tk=ALL-UNNAMED")
 }
 
 jmh {
