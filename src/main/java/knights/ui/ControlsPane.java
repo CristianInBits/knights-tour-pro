@@ -1,6 +1,7 @@
 package knights.ui;
 
 import javafx.geometry.Insets;
+import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.text.Text;
@@ -13,7 +14,6 @@ import java.util.function.Consumer;
 
 public class ControlsPane extends VBox {
 
-    // Inputs
     private final Spinner<Integer> spRows = new Spinner<>(1, 20, 6);
     private final Spinner<Integer> spCols = new Spinner<>(1, 20, 6);
     private final Spinner<Integer> spSR = new Spinner<>(0, 19, 0);
@@ -28,7 +28,7 @@ public class ControlsPane extends VBox {
             Math.max(2, Runtime.getRuntime().availableProcessors()));
     private final CheckBox chkUseCustomPool = new CheckBox("Custom Pool");
 
-    private final Slider slSpeed = new Slider(10, 400, 80); // ms por paso
+    private final Slider slSpeed = new Slider(10, 400, 80); // ms per step
     private final Text lblSpeed = new Text("Speed: 80 ms/step");
 
     private final TextField tfOut = new TextField("output");
@@ -44,7 +44,6 @@ public class ControlsPane extends VBox {
         setSpacing(8);
         getStyleClass().add("controls");
 
-        // Modo / estrategia
         cbMode.getItems().addAll("single", "all");
         cbMode.getSelectionModel().select("single");
 
@@ -56,7 +55,6 @@ public class ControlsPane extends VBox {
         spFork.setDisable(true);
         spPool.setDisable(true);
 
-        // Habilitar forkDepth/pool solo si parallel
         cbStrategy.getSelectionModel().selectedItemProperty().addListener((obs, oldV, newV) -> {
             boolean isParallel = "parallel".equalsIgnoreCase(newV);
             spFork.setDisable(!isParallel);
@@ -67,35 +65,31 @@ public class ControlsPane extends VBox {
             spPool.setDisable(!newV || !"parallel".equalsIgnoreCase(cbStrategy.getValue()));
         });
 
-        // Adaptar límites de start según rows/cols
         spRows.valueProperty().addListener((o, ov, nv) -> spSR.setValueFactory(
                 new SpinnerValueFactory.IntegerSpinnerValueFactory(0, nv - 1, Math.min(spSR.getValue(), nv - 1))));
         spCols.valueProperty().addListener((o, ov, nv) -> spSC.setValueFactory(
                 new SpinnerValueFactory.IntegerSpinnerValueFactory(0, nv - 1, Math.min(spSC.getValue(), nv - 1))));
 
-        // Velocidad
         slSpeed.valueProperty().addListener((obs, ov, nv) -> lblSpeed.setText("Speed: " + nv.intValue() + " ms/step"));
 
-        // Layout
         GridPane grid = new GridPane();
         grid.setHgap(12);
         grid.setVgap(8);
 
         int r = 0;
-        grid.add(row("Rows", spRows, "Cols", spCols), 0, r++);
-        grid.add(row("Start Row", spSR, "Start Col", spSC), 0, r++);
-        grid.add(row("Mode", cbMode, "Strategy", cbStrategy), 0, r++);
-        grid.add(row("Closed", chkClosed, "Fork Depth", spFork), 0, r++);
-        grid.add(row("Custom Pool", chkUseCustomPool, "Pool size", spPool), 0, r++);
-        grid.add(row(lblSpeed, slSpeed), 0, r++);
-        grid.add(row("Output dir", tfOut, "Export", chkExport), 0, r++);
+        grid.add(row(new Label("Rows"), spRows, new Label("Cols"), spCols), 0, r++);
+        grid.add(row(new Label("Start Row"), spSR, new Label("Start Col"), spSC), 0, r++);
+        grid.add(row(new Label("Mode"), cbMode, new Label("Strategy"), cbStrategy), 0, r++);
+        grid.add(row(new Label("Closed"), chkClosed, new Label("Fork Depth"), spFork), 0, r++);
+        grid.add(row(new Label("Custom Pool"), chkUseCustomPool, new Label("Pool size"), spPool), 0, r++);
+        grid.add(row(lblSpeed, slSpeed), 0, r++); // <-- keep Text as Node
+        grid.add(row(new Label("Output dir"), tfOut, new Label("Export"), chkExport), 0, r++);
 
         HBox actions = new HBox(10, btnRun, status);
         actions.setPadding(new Insets(4, 0, 0, 0));
 
         getChildren().addAll(grid, actions);
 
-        // Acción RUN
         btnRun.setOnAction(e -> {
             RunConfig cfg = currentConfig();
             if (onRun != null) {
@@ -106,22 +100,25 @@ public class ControlsPane extends VBox {
     }
 
     private HBox row(Object leftLabel, Object leftControl, Object rightLabel, Object rightControl) {
-        Label l = (leftLabel instanceof Label) ? (Label) leftLabel : new Label(String.valueOf(leftLabel));
-        Label r = (rightLabel instanceof Label) ? (Label) rightLabel : new Label(String.valueOf(rightLabel));
+        Node l = node(leftLabel);
+        Node lc = node(leftControl);
+        Node r = node(rightLabel);
+        Node rc = node(rightControl);
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
-        return new HBox(12, l, node(leftControl), spacer, r, node(rightControl));
+        return new HBox(12, l, lc, spacer, r, rc);
     }
 
     private HBox row(Object leftLabel, Object leftControl) {
-        Label l = (leftLabel instanceof Label) ? (Label) leftLabel : new Label(String.valueOf(leftLabel));
+        Node l = node(leftLabel);
+        Node lc = node(leftControl);
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
-        return new HBox(12, l, node(leftControl), spacer);
+        return new HBox(12, l, lc, spacer);
     }
 
-    private javafx.scene.Node node(Object o) {
-        return (o instanceof javafx.scene.Node n) ? n : new Label(String.valueOf(o));
+    private Node node(Object o) {
+        return (o instanceof Node n) ? n : new Label(String.valueOf(o));
     }
 
     public void setOnRun(Consumer<RunConfig> onRun) {
@@ -136,12 +133,9 @@ public class ControlsPane extends VBox {
         int rows = spRows.getValue();
         int cols = spCols.getValue();
         return new RunConfig(
-                rows,
-                cols,
-                spSR.getValue(),
-                spSC.getValue(),
-                cbMode.getValue(),
-                cbStrategy.getValue(),
+                rows, cols,
+                spSR.getValue(), spSC.getValue(),
+                cbMode.getValue(), cbStrategy.getValue(),
                 chkClosed.isSelected(),
                 spFork.getValue(),
                 chkUseCustomPool.isSelected() ? spPool.getValue() : null,
@@ -150,14 +144,13 @@ public class ControlsPane extends VBox {
                 tfOut.getText());
     }
 
-    // Config transport object (record)
     public record RunConfig(
             int rows, int cols,
             int startRow, int startCol,
             String mode, String strategy,
             boolean closed,
             int forkDepth,
-            Integer poolParallelism, // nullable
+            Integer poolParallelism,
             int msPerStep,
             boolean export,
             String exportDir) {
@@ -179,4 +172,10 @@ public class ControlsPane extends VBox {
             return m;
         }
     }
+
+    public void setRunning(boolean running) {
+        btnRun.setDisable(running);
+        status.setText(running ? "Running..." : "Ready");
+    }
+
 }
