@@ -76,6 +76,10 @@ public class ControlsPane extends VBox {
                 new SpinnerValueFactory.IntegerSpinnerValueFactory(0, nv - 1, Math.min(spSC.getValue(), nv - 1))));
         slSpeed.valueProperty().addListener((obs, ov, nv) -> lblSpeed.setText("Speed: " + nv.intValue() + " ms/step"));
 
+        chkClosed.setText(null);
+        chkUseCustomPool.setText(null);
+        chkExport.setText(null);
+
         GridPane grid = new GridPane();
         grid.setHgap(12);
         grid.setVgap(8);
@@ -114,6 +118,18 @@ public class ControlsPane extends VBox {
             if (onStop != null)
                 onStop.run();
         });
+
+        lblSpeed.getStyleClass().add("speed-text");
+        status.getStyleClass().add("status");
+        actions.getStyleClass().add("actions");
+        btnStop.getStyleClass().add("stop");
+
+        slSpeed.setShowTickLabels(true);
+        slSpeed.setShowTickMarks(true);
+        slSpeed.setMajorTickUnit(100);
+        slSpeed.setMinorTickCount(4);
+        slSpeed.setSnapToTicks(true);
+        Tooltip.install(slSpeed, new Tooltip("ms to step"));
     }
 
     private HBox row(Object leftLabel, Object leftControl, Object rightLabel, Object rightControl) {

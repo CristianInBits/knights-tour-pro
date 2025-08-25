@@ -141,6 +141,8 @@ public class MainFX extends Application {
         });
 
         Scene scene = new Scene(root, 620, 900);
+        scene.getStylesheets().add(
+                getClass().getResource("/app.css").toExternalForm());
         stage.setTitle("Knight's Tour Pro — JavaFX");
         stage.setScene(scene);
         stage.show();

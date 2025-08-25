@@ -1,0 +1,116 @@
+.controls {
+    -fx-background-color: linear-gradient(to bottom, #2b2f3a, #21242d);
+    -fx-padding: 12;
+    -fx-spacing: 8;
+    -fx-border-color: rgba(255, 255, 255, 0.08);
+    -fx-border-width: 0 0 1 0;
+
+}
+
+.controls .label {
+    -fx-text-fill: #e6e8ef;
+    -fx-font-size: 12.5px;
+}
+
+.controls .status {
+    -fx-text-fill: #9ccfd8;
+    -fx-font-weight: bold;
+}
+
+.controls .button {
+    -fx-background-radius: 10;
+    -fx-padding: 8 14 8 14;
+    -fx-font-weight: 600;
+    -fx-text-fill: white;
+    -fx-background-color: #3d6df2;
+}
+
+.controls .button:hover {
+    -fx-background-color: #3158c6;
+}
+
+.controls .button:disabled {
+    -fx-opacity: 0.6;
+}
+
+.controls .button.stop {
+    -fx-background-color: #e5484d;
+}
+
+.controls .button.stop:hover {
+    -fx-background-color: #c13a3f;
+}
+
+.controls .choice-box,
+.controls .spinner,
+.controls .text-field {
+    -fx-background-color: #2b2f3a;
+    -fx-background-insets: 0;
+    -fx-background-radius: 8;
+    -fx-border-color: rgba(255, 255, 255, 0.15);
+    -fx-border-radius: 8;
+    -fx-text-fill: #e6e8ef;
+}
+
+.controls .text-field:focused,
+.controls .choice-box:focused,
+.controls .spinner:focused {
+    -fx-border-color: #3d6df2;
+}
+
+.controls .check-box .box {
+    -fx-background-color: #2b2f3a;
+    -fx-border-color: rgba(255, 255, 255, 0.25);
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+}
+
+.controls .check-box:selected .box {
+    -fx-border-color: #3d6df2;
+    -fx-background-color: #3d6df2;
+}
+
+.controls .slider .track {
+    -fx-background-color: rgba(255, 255, 255, 0.2);
+    -fx-background-radius: 4;
+}
+
+.controls .slider .thumb {
+    -fx-background-color: #3d6df2;
+    -fx-background-radius: 10;
+}
+
+.controls .speed-text {
+    -fx-fill: #e6e8ef;
+}
+
+.controls .actions {
+    -fx-padding: 4 0 0 0;
+    -fx-spacing: 10;
+    -fx-alignment: center-left;
+}
+
+/* ----- Menús emergentes (ChoiceBox, etc.) ----- */
+.context-menu {
+    -fx-background-color: #2b2f3a;
+    -fx-background-radius: 8;
+    -fx-padding: 6;
+    -fx-border-color: rgba(255,255,255,0.15);
+    -fx-border-radius: 8;
+}
+
+.menu-item .label {
+    -fx-text-fill: #e6e8ef;     /* texto claro para opciones no enfocadas */
+}
+
+.menu-item:focused {
+    -fx-background-color: #3d6df2;  /* hover/selección */
+}
+.menu-item:focused .label {
+    -fx-text-fill: white;
+}
+
+/* El “botón” cerrado del ChoiceBox */
+.controls .choice-box .label {
+    -fx-text-fill: #e6e8ef;     /* texto del elegido, cuando está cerrado */
+}
