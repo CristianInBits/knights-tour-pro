@@ -14,17 +14,33 @@ import knights.export.TxtExporter;
 import knights.model.Board;
 import knights.model.Position;
 import knights.solver.*;
+
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class MainFX extends Application {
+
     private ControlsPane controls;
     private BoardView boardView;
 
+    private final ExecutorService computeExec = Executors.newFixedThreadPool(
+            Math.max(2, Runtime.getRuntime().availableProcessors() / 2),
+            r -> {
+                var t = new Thread(r, "compute-exec");
+                t.setDaemon(true);
+                return t;
+            });
+
+    private final AtomicReference<CompletableFuture<SolveResult>> running = new AtomicReference<>();
+
     @Override
     public void start(Stage stage) {
+
         controls = new ControlsPane();
         boardView = new BoardView();
 
@@ -55,49 +71,73 @@ public class MainFX extends Application {
         });
 
         controls.setOnRun(cfg -> {
+
             controls.setRunning(true);
             Platform.runLater(() -> boardView.initGrid(cfg.rows(), cfg.cols()));
 
-            CompletableFuture
-                    .supplyAsync(() -> compute(cfg))
-                    .whenComplete((result, error) -> Platform.runLater(() -> {
+            CompletableFuture<SolveResult> fut = CompletableFuture
+                    .supplyAsync(() -> compute(cfg), computeExec);
+
+            running.set(fut);
+
+            fut.whenComplete((result, error) -> Platform.runLater(() -> {
+
+                var current = running.get();
+
+                if (current == null || current.isCancelled() || current != fut)
+                    return;
+                try {
+                    if (error != null) {
+                        controls.showMessage("Error: " + error.getMessage());
+                        return;
+                    }
+                    if (result == null || result.path().isEmpty()) {
+                        controls.showMessage("No solution found.");
+                        return;
+                    }
+
+                    boardView.clearMarks();
+
+                    // Enable Pause while animating; disable it when finished
+                    controls.setAnimating(true);
+                    boardView.setOnAnimationFinished(() -> controls.setAnimating(false));
+
+                    boardView.animate(result.path(), cfg.msPerStep());
+
+                    if (cfg.export()) {
+                        ResultExporter txt = new TxtExporter();
+                        ResultExporter json = new JsonExporter();
                         try {
-                            if (error != null) {
-                                controls.showMessage("Error: " + error.getMessage());
-                                return;
-                            }
-                            if (result == null || result.path().isEmpty()) {
-                                controls.showMessage("No solution found.");
-                                return;
-                            }
-
-                            boardView.clearMarks();
-
-                            // Enable Pause while animating; disable it when finished
-                            controls.setAnimating(true);
-                            boardView.setOnAnimationFinished(() -> controls.setAnimating(false));
-
-                            boardView.animate(result.path(), cfg.msPerStep());
-
-                            if (cfg.export()) {
-                                ResultExporter txt = new TxtExporter();
-                                ResultExporter json = new JsonExporter();
-                                try {
-                                    txt.exportSingle(result.path(), result.metadata(), cfg.exportDir() + "/tour.txt");
-                                    json.exportSingle(result.path(), result.metadata(), cfg.exportDir() + "/tour.json");
-                                    controls.showMessage("Exported to " + cfg.exportDir());
-                                } catch (Exception ex) {
-                                    controls.showMessage("Export error: " + ex.getMessage());
-                                }
-                            } else {
-                                controls.showMessage("Done");
-                            }
-                        } finally {
-                            // Run button can be used again immediately; Pause stays enabled
-                            // until animation finishes (handled by setOnAnimationFinished).
-                            controls.setRunning(false);
+                            txt.exportSingle(result.path(), result.metadata(), cfg.exportDir() + "/tour.txt");
+                            json.exportSingle(result.path(), result.metadata(), cfg.exportDir() + "/tour.json");
+                            controls.showMessage("Exported to " + cfg.exportDir());
+                        } catch (Exception ex) {
+                            controls.showMessage("Export error: " + ex.getMessage());
                         }
-                    }));
+                    } else {
+                        controls.showMessage("Done");
+                    }
+                } finally {
+                    // Run button can be used again immediately; Pause stays enabled
+                    // until animation finishes (handled by setOnAnimationFinished).
+                    controls.setRunning(false);
+                    running.set(null);
+                }
+            }));
+        });
+
+        // STOP
+        controls.setOnStop(() -> {
+
+            var fut = running.getAndSet(null);
+            if (fut != null)
+                fut.cancel(true);
+
+            boardView.clearMarks();
+            controls.setAnimating(false);
+
+            controls.setRunning(false);
+            controls.showMessage("Stopped");
         });
 
         Scene scene = new Scene(root, 620, 900);
@@ -152,5 +192,10 @@ public class MainFX extends Application {
     }
 
     private record SolveResult(List<Position> path, Map<String, Object> metadata) {
+    }
+
+    @Override
+    public void stop() {
+        computeExec.shutdownNow();
     }
 }
