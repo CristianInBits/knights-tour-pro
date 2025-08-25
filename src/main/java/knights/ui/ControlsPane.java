@@ -13,30 +13,39 @@ import java.util.Map;
 import java.util.function.Consumer;
 
 public class ControlsPane extends VBox {
+
     private final Spinner<Integer> spRows = new Spinner<>(1, 20, 6);
     private final Spinner<Integer> spCols = new Spinner<>(1, 20, 6);
     private final Spinner<Integer> spSR = new Spinner<>(0, 19, 0);
     private final Spinner<Integer> spSC = new Spinner<>(0, 19, 0);
-    private final ChoiceBox<String> cbMode = new ChoiceBox<>();
-    private final ChoiceBox<String> cbStrategy = new ChoiceBox<>();
-    private final CheckBox chkClosed = new CheckBox("Closed");
-    private final Spinner<Integer> spFork = new Spinner<>(0, 8, 2);
     private final Spinner<Integer> spPool = new Spinner<>(1, 64,
             Math.max(2, Runtime.getRuntime().availableProcessors()));
+    private final Spinner<Integer> spFork = new Spinner<>(0, 8, 2);
+
+    private final ChoiceBox<String> cbMode = new ChoiceBox<>();
+    private final ChoiceBox<String> cbStrategy = new ChoiceBox<>();
+
+    private final CheckBox chkClosed = new CheckBox("Closed");
     private final CheckBox chkUseCustomPool = new CheckBox("Custom Pool");
+
     private final Slider slSpeed = new Slider(10, 400, 80); // ms per step
     private final Text lblSpeed = new Text("Speed: 80 ms/step");
     private final TextField tfOut = new TextField("output");
     private final CheckBox chkExport = new CheckBox("Export");
+    private final Label status = new Label();
+
     private final Button btnRun = new Button("Run");
     private final Button btnPause = new Button("Pause");
-    private final Label status = new Label();
+    private final Button btnStop = new Button("Stop");
 
     private Consumer<RunConfig> onRun;
     private Consumer<Boolean> onPauseChanged;
+    private Runnable onStop;
+
     private boolean paused = false;
 
     public ControlsPane() {
+
         setPadding(new Insets(12));
         setSpacing(8);
         getStyleClass().add("controls");
@@ -82,7 +91,7 @@ public class ControlsPane extends VBox {
         btnPause.setDisable(false); // we’ll control enabled/disabled via setAnimating(false) initially
         setAnimating(false); // start disabled and labeled "Pause"
 
-        HBox actions = new HBox(10, btnRun, btnPause, status);
+        HBox actions = new HBox(10, btnRun, btnPause, btnStop, status);
         actions.setPadding(new Insets(4, 0, 0, 0));
         getChildren().addAll(grid, actions);
 
@@ -99,6 +108,11 @@ public class ControlsPane extends VBox {
             btnPause.setText(paused ? "Resume" : "Pause");
             if (onPauseChanged != null)
                 onPauseChanged.accept(paused);
+        });
+
+        btnStop.setOnAction(e -> {
+            if (onStop != null)
+                onStop.run();
         });
     }
 
@@ -188,6 +202,7 @@ public class ControlsPane extends VBox {
     public void setRunning(boolean running) {
         btnRun.setDisable(running);
         status.setText(running ? "Running..." : "Ready");
+        btnStop.setDisable(!running);
     }
 
     /** Enables/disables Pause button; resets its label when disabling. */
@@ -203,5 +218,9 @@ public class ControlsPane extends VBox {
     public void setPaused(boolean paused) {
         this.paused = paused;
         btnPause.setText(paused ? "Resume" : "Pause");
+    }
+
+    public void setOnStop(Runnable onStop) {
+        this.onStop = onStop;
     }
 }
