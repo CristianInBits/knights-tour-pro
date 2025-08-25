@@ -13,31 +13,28 @@ import java.util.Map;
 import java.util.function.Consumer;
 
 public class ControlsPane extends VBox {
-
     private final Spinner<Integer> spRows = new Spinner<>(1, 20, 6);
     private final Spinner<Integer> spCols = new Spinner<>(1, 20, 6);
     private final Spinner<Integer> spSR = new Spinner<>(0, 19, 0);
     private final Spinner<Integer> spSC = new Spinner<>(0, 19, 0);
-
     private final ChoiceBox<String> cbMode = new ChoiceBox<>();
     private final ChoiceBox<String> cbStrategy = new ChoiceBox<>();
     private final CheckBox chkClosed = new CheckBox("Closed");
-
     private final Spinner<Integer> spFork = new Spinner<>(0, 8, 2);
     private final Spinner<Integer> spPool = new Spinner<>(1, 64,
             Math.max(2, Runtime.getRuntime().availableProcessors()));
     private final CheckBox chkUseCustomPool = new CheckBox("Custom Pool");
-
     private final Slider slSpeed = new Slider(10, 400, 80); // ms per step
     private final Text lblSpeed = new Text("Speed: 80 ms/step");
-
     private final TextField tfOut = new TextField("output");
     private final CheckBox chkExport = new CheckBox("Export");
-
     private final Button btnRun = new Button("Run");
+    private final Button btnPause = new Button("Pause");
     private final Label status = new Label();
 
     private Consumer<RunConfig> onRun;
+    private Consumer<Boolean> onPauseChanged;
+    private boolean paused = false;
 
     public ControlsPane() {
         setPadding(new Insets(12));
@@ -64,30 +61,29 @@ public class ControlsPane extends VBox {
         chkUseCustomPool.selectedProperty().addListener((obs, oldV, newV) -> {
             spPool.setDisable(!newV || !"parallel".equalsIgnoreCase(cbStrategy.getValue()));
         });
-
         spRows.valueProperty().addListener((o, ov, nv) -> spSR.setValueFactory(
                 new SpinnerValueFactory.IntegerSpinnerValueFactory(0, nv - 1, Math.min(spSR.getValue(), nv - 1))));
         spCols.valueProperty().addListener((o, ov, nv) -> spSC.setValueFactory(
                 new SpinnerValueFactory.IntegerSpinnerValueFactory(0, nv - 1, Math.min(spSC.getValue(), nv - 1))));
-
         slSpeed.valueProperty().addListener((obs, ov, nv) -> lblSpeed.setText("Speed: " + nv.intValue() + " ms/step"));
 
         GridPane grid = new GridPane();
         grid.setHgap(12);
         grid.setVgap(8);
-
         int r = 0;
         grid.add(row(new Label("Rows"), spRows, new Label("Cols"), spCols), 0, r++);
         grid.add(row(new Label("Start Row"), spSR, new Label("Start Col"), spSC), 0, r++);
         grid.add(row(new Label("Mode"), cbMode, new Label("Strategy"), cbStrategy), 0, r++);
         grid.add(row(new Label("Closed"), chkClosed, new Label("Fork Depth"), spFork), 0, r++);
         grid.add(row(new Label("Custom Pool"), chkUseCustomPool, new Label("Pool size"), spPool), 0, r++);
-        grid.add(row(lblSpeed, slSpeed), 0, r++); // <-- keep Text as Node
+        grid.add(row(lblSpeed, slSpeed), 0, r++); // keep Text as Node
         grid.add(row(new Label("Output dir"), tfOut, new Label("Export"), chkExport), 0, r++);
 
-        HBox actions = new HBox(10, btnRun, status);
-        actions.setPadding(new Insets(4, 0, 0, 0));
+        btnPause.setDisable(false); // we’ll control enabled/disabled via setAnimating(false) initially
+        setAnimating(false); // start disabled and labeled "Pause"
 
+        HBox actions = new HBox(10, btnRun, btnPause, status);
+        actions.setPadding(new Insets(4, 0, 0, 0));
         getChildren().addAll(grid, actions);
 
         btnRun.setOnAction(e -> {
@@ -96,6 +92,13 @@ public class ControlsPane extends VBox {
                 status.setText("Running…");
                 onRun.accept(cfg);
             }
+        });
+
+        btnPause.setOnAction(e -> {
+            paused = !paused;
+            btnPause.setText(paused ? "Resume" : "Pause");
+            if (onPauseChanged != null)
+                onPauseChanged.accept(paused);
         });
     }
 
@@ -123,6 +126,14 @@ public class ControlsPane extends VBox {
 
     public void setOnRun(Consumer<RunConfig> onRun) {
         this.onRun = onRun;
+    }
+
+    /**
+     * Called when Pause/Resume is clicked; consumer receives true=paused,
+     * false=running.
+     */
+    public void setOnPauseChanged(Consumer<Boolean> onPauseChanged) {
+        this.onPauseChanged = onPauseChanged;
     }
 
     public void showMessage(String msg) {
@@ -173,9 +184,24 @@ public class ControlsPane extends VBox {
         }
     }
 
+    /** Enables/disables the Run button and updates the status label. */
     public void setRunning(boolean running) {
         btnRun.setDisable(running);
         status.setText(running ? "Running..." : "Ready");
     }
 
+    /** Enables/disables Pause button; resets its label when disabling. */
+    public void setAnimating(boolean animating) {
+        btnPause.setDisable(!animating);
+        if (!animating) {
+            paused = false;
+            btnPause.setText("Pause");
+        }
+    }
+
+    /** Programmatically set pause state and label. */
+    public void setPaused(boolean paused) {
+        this.paused = paused;
+        btnPause.setText(paused ? "Resume" : "Pause");
+    }
 }

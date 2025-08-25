@@ -26,6 +26,12 @@ public class BoardView extends GridPane {
 
     private Timeline timeline;
 
+    /**
+     * Optional hook: called when the animation finishes (naturally or because it
+     * runs out of frames).
+     */
+    private Runnable onAnimationFinished;
+
     /** Knight PNG resource (transparent background recommended). */
     private static final String KNIGHT_RESOURCE = "/knight.png";
     private final Image knightImage;
@@ -135,7 +141,33 @@ public class BoardView extends GridPane {
         }
 
         timeline.setCycleCount(1);
+        timeline.setOnFinished(ev -> {
+            if (onAnimationFinished != null)
+                onAnimationFinished.run();
+        });
         timeline.playFromStart();
+    }
+
+    /** Pauses the animation (if running). */
+    public void pauseAnimation() {
+        if (timeline != null)
+            timeline.pause();
+    }
+
+    /** Resumes the animation (if paused). */
+    public void resumeAnimation() {
+        if (timeline != null)
+            timeline.play();
+    }
+
+    /** Returns true if the timeline exists and is currently paused. */
+    public boolean isPaused() {
+        return timeline != null && timeline.getStatus() == javafx.animation.Animation.Status.PAUSED;
+    }
+
+    /** Sets a callback that will be called when the animation finishes. */
+    public void setOnAnimationFinished(Runnable onFinished) {
+        this.onAnimationFinished = onFinished;
     }
 
     // ====================== C E L L ======================
@@ -165,7 +197,7 @@ public class BoardView extends GridPane {
             rect.setArcWidth(8);
             rect.setArcHeight(8);
             rect.setFill(base);
-            rect.setStroke(null); // remove border
+            rect.setStroke(null); // no border
 
             // Knight image or fallback glyph ♞
             if (sharedKnight != null) {
