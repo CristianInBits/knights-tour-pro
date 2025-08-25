@@ -2,24 +2,24 @@ package knights.ui;
 
 import javafx.application.Application;
 import javafx.application.Platform;
+import javafx.beans.binding.Bindings;
+import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
-
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ForkJoinPool;
-import java.util.Map;
-
 import knights.export.JsonExporter;
 import knights.export.ResultExporter;
 import knights.export.TxtExporter;
 import knights.model.Board;
 import knights.model.Position;
 import knights.solver.*;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ForkJoinPool;
 
 public class MainFX extends Application {
-
     private ControlsPane controls;
     private BoardView boardView;
 
@@ -30,10 +30,32 @@ public class MainFX extends Application {
 
         BorderPane root = new BorderPane();
         root.setTop(controls);
-        root.setCenter(boardView);
+
+        // Holder that keeps the board square and centered
+        StackPane boardHolder = new StackPane(boardView);
+        boardHolder.setPadding(new Insets(8)); // optional margin around the board
+        boardHolder.setStyle("-fx-background-color: #222;"); // optional background for the board area
+
+        // Bind the board’s size to the minimum of the holder’s width and height (force
+        // 1:1 aspect ratio)
+        var side = Bindings.min(boardHolder.widthProperty(), boardHolder.heightProperty());
+        boardView.prefWidthProperty().bind(side);
+        boardView.prefHeightProperty().bind(side);
+        boardView.maxWidthProperty().bind(side);
+        boardView.maxHeightProperty().bind(side);
+
+        root.setCenter(boardHolder);
+
+        // Hook Pause/Resume into the board animation
+        controls.setOnPauseChanged(paused -> {
+            if (paused)
+                boardView.pauseAnimation();
+            else
+                boardView.resumeAnimation();
+        });
 
         controls.setOnRun(cfg -> {
-            controls.setRunning(true); 
+            controls.setRunning(true);
             Platform.runLater(() -> boardView.initGrid(cfg.rows(), cfg.cols()));
 
             CompletableFuture
@@ -48,8 +70,13 @@ public class MainFX extends Application {
                                 controls.showMessage("No solution found.");
                                 return;
                             }
-                            
+
                             boardView.clearMarks();
+
+                            // Enable Pause while animating; disable it when finished
+                            controls.setAnimating(true);
+                            boardView.setOnAnimationFinished(() -> controls.setAnimating(false));
+
                             boardView.animate(result.path(), cfg.msPerStep());
 
                             if (cfg.export()) {
@@ -66,12 +93,14 @@ public class MainFX extends Application {
                                 controls.showMessage("Done");
                             }
                         } finally {
+                            // Run button can be used again immediately; Pause stays enabled
+                            // until animation finishes (handled by setOnAnimationFinished).
                             controls.setRunning(false);
                         }
                     }));
         });
 
-        Scene scene = new Scene(root, 900, 720);
+        Scene scene = new Scene(root, 620, 900);
         stage.setTitle("Knight's Tour Pro — JavaFX");
         stage.setScene(scene);
         stage.show();
@@ -112,7 +141,6 @@ public class MainFX extends Application {
                             solver = new ParallelBacktrackingSolver(board, start, closed, cfg.forkDepth());
                         }
                     }
-
                     default -> solver = new BacktrackingSolver(board, start, closed);
                 }
                 List<Position> path = solver.solve();
