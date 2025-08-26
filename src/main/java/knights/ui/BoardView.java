@@ -11,6 +11,7 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
+import javafx.scene.text.Font;
 import javafx.scene.text.Text;
 import javafx.util.Duration;
 import knights.model.Position;
@@ -241,7 +242,8 @@ public class BoardView extends GridPane {
         void updateFonts() {
             double side = Math.min(root.getWidth(), root.getHeight());
             double stepSize = Math.max(10, side * 0.22); // step number ≈ 22% of side
-            stepText.setStyle("-fx-font-size: " + (int) stepSize + "px; -fx-font-weight: bold;");
+            stepText.setFont(Font.font(stepSize));
+            // stepText.setStyle("-fx-font-size: " + (int) stepSize + "px; -fx-font-weight: bold;");
 
             if (knightGlyph != null) {
                 double ksize = Math.max(12, side * 0.52); // glyph ≈ 52% of side

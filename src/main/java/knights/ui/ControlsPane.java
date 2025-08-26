@@ -1,16 +1,20 @@
 package knights.ui;
 
+import javafx.application.Platform;
 import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.text.Text;
+import javafx.scene.text.TextFlow;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 import java.util.Map;
 import java.util.function.Consumer;
+import java.util.stream.Stream;
 
 public class ControlsPane extends VBox {
 
@@ -38,6 +42,11 @@ public class ControlsPane extends VBox {
     private final Button btnPause = new Button("Pause");
     private final Button btnStop = new Button("Stop");
 
+    // Help panel (right side inside ControlsPane)
+    private final Label helpTitle = new Label("Description");
+    private final TextFlow helpText = new TextFlow();
+    private final VBox helpPane = new VBox(8, helpTitle, helpText);
+
     private Consumer<RunConfig> onRun;
     private Consumer<Boolean> onPauseChanged;
     private Runnable onStop;
@@ -45,41 +54,60 @@ public class ControlsPane extends VBox {
     private boolean paused = false;
 
     public ControlsPane() {
-
-        setPadding(new Insets(12));
-        setSpacing(8);
+        // Panel container config
+        setPadding(new Insets(8, 16, 8, 16));
+        setSpacing(6);
         getStyleClass().add("controls");
 
+        // Data & defaults
         cbMode.getItems().addAll("single", "all");
         cbMode.getSelectionModel().select("single");
 
         cbStrategy.getItems().addAll("backtrack", "warnsdorff", "parallel");
-        cbStrategy.getSelectionModel().select("parallel");
+        cbStrategy.getSelectionModel().select("backtrack");
 
         chkExport.setSelected(false);
         chkUseCustomPool.setSelected(false);
         spFork.setDisable(true);
         spPool.setDisable(true);
 
+        // Reactive enable/disable for parallel options
         cbStrategy.getSelectionModel().selectedItemProperty().addListener((obs, oldV, newV) -> {
             boolean isParallel = "parallel".equalsIgnoreCase(newV);
             spFork.setDisable(!isParallel);
             chkUseCustomPool.setDisable(!isParallel);
             spPool.setDisable(!isParallel || !chkUseCustomPool.isSelected());
+            refreshHelp(); // update help text when strategy changes
         });
         chkUseCustomPool.selectedProperty().addListener((obs, oldV, newV) -> {
             spPool.setDisable(!newV || !"parallel".equalsIgnoreCase(cbStrategy.getValue()));
         });
+
+        // Keep start spinners within rows/cols range
         spRows.valueProperty().addListener((o, ov, nv) -> spSR.setValueFactory(
                 new SpinnerValueFactory.IntegerSpinnerValueFactory(0, nv - 1, Math.min(spSR.getValue(), nv - 1))));
         spCols.valueProperty().addListener((o, ov, nv) -> spSC.setValueFactory(
                 new SpinnerValueFactory.IntegerSpinnerValueFactory(0, nv - 1, Math.min(spSC.getValue(), nv - 1))));
+
+        // Speed label binding
         slSpeed.valueProperty().addListener((obs, ov, nv) -> lblSpeed.setText("Speed: " + nv.intValue() + " ms/step"));
 
+        // Spinners styling & UX
+        Stream.of(spRows, spCols, spSR, spSC, spFork, spPool).forEach(sp -> {
+            sp.getStyleClass().addAll("ghost"); // you kept Ghost
+            sp.setEditable(true);
+            sp.setPrefWidth(110);
+            enableScroll(sp);
+            selectAllOnFocus(sp);
+            centerText(sp);
+        });
+
+        // Remove duplicated labels on checkboxes (we keep Label at the left column)
         chkClosed.setText(null);
         chkUseCustomPool.setText(null);
         chkExport.setText(null);
 
+        // Build left grid with controls
         GridPane grid = new GridPane();
         grid.setHgap(12);
         grid.setVgap(8);
@@ -89,16 +117,31 @@ public class ControlsPane extends VBox {
         grid.add(row(new Label("Mode"), cbMode, new Label("Strategy"), cbStrategy), 0, r++);
         grid.add(row(new Label("Closed"), chkClosed, new Label("Fork Depth"), spFork), 0, r++);
         grid.add(row(new Label("Custom Pool"), chkUseCustomPool, new Label("Pool size"), spPool), 0, r++);
-        grid.add(row(lblSpeed, slSpeed), 0, r++); // keep Text as Node
+        grid.add(row(lblSpeed, slSpeed), 0, r++); // keep Text as Node for custom color
         grid.add(row(new Label("Output dir"), tfOut, new Label("Export"), chkExport), 0, r++);
 
-        btnPause.setDisable(false); // we’ll control enabled/disabled via setAnimating(false) initially
-        setAnimating(false); // start disabled and labeled "Pause"
+        // Right help panel (inside ControlsPane)
+        helpTitle.getStyleClass().add("help-title");
+        helpText.getStyleClass().add("help-text");
+        helpText.setPrefWidth(280);
+        helpText.setMaxWidth(280);
+        helpText.setLineSpacing(4);
+        helpPane.setPadding(new Insets(8, 0, 0, 16)); // small gap from grid
+        helpPane.getStyleClass().add("help-pane");
 
+        // Main row: grid + help side by side
+        HBox mainRow = new HBox(16, grid, helpPane);
+        HBox.setHgrow(grid, Priority.ALWAYS);
+        // helpPane keeps a fixed narrow column width (280px)
+        getChildren().add(mainRow);
+
+        // Actions row
         HBox actions = new HBox(10, btnRun, btnPause, btnStop, status);
         actions.setPadding(new Insets(4, 0, 0, 0));
-        getChildren().addAll(grid, actions);
+        actions.getStyleClass().add("actions");
+        getChildren().add(actions);
 
+        // Handlers
         btnRun.setOnAction(e -> {
             RunConfig cfg = currentConfig();
             if (onRun != null) {
@@ -119,19 +162,95 @@ public class ControlsPane extends VBox {
                 onStop.run();
         });
 
+        // CSS classes
         lblSpeed.getStyleClass().add("speed-text");
         status.getStyleClass().add("status");
-        actions.getStyleClass().add("actions");
         btnStop.getStyleClass().add("stop");
 
+        // Slider ticks & dynamic tooltip
         slSpeed.setShowTickLabels(true);
         slSpeed.setShowTickMarks(true);
         slSpeed.setMajorTickUnit(100);
         slSpeed.setMinorTickCount(4);
         slSpeed.setSnapToTicks(true);
-        Tooltip.install(slSpeed, new Tooltip("ms to step"));
+        Tooltip speedTip = tt("Speed: " + (int) slSpeed.getValue() + " ms/step");
+        slSpeed.setTooltip(speedTip);
+        slSpeed.valueProperty().addListener((o, ov, nv) -> speedTip.setText("Speed: " + nv.intValue() + " ms/step"));
+
+        // Tooltips
+        spRows.setTooltip(tt("Número de filas del tablero"));
+        spCols.setTooltip(tt("Número de columnas del tablero"));
+        spSR.setTooltip(tt("Fila de inicio (0-index)"));
+        spSC.setTooltip(tt("Columna de inicio (0-index)"));
+        cbMode.setTooltip(tt("""
+                single: calcula un único tour (más rápido)
+                all: busca todos los tours (puede tardar mucho)
+                """));
+        chkClosed.setTooltip(tt("Si está marcado, el tour debe volver al inicio (tour cerrado)"));
+        cbStrategy.setTooltip(tt("""
+                Estrategia de búsqueda:
+                • backtrack: backtracking clásico (exhaustivo)
+                • warnsdorff: heurística de Warnsdorff (muy rápida)
+                • parallel: backtracking paralelo (usa varios hilos)
+                """));
+        spFork.setTooltip(tt("Profundidad a partir de la cual bifurcar en paralelo"));
+        chkUseCustomPool.setTooltip(tt("Usar un pool propio en paralelo (control del nº de hilos)"));
+        spPool.setTooltip(tt("Tamaño del pool paralelo (nº máximo de hilos)"));
+        tfOut.setTooltip(tt("Directorio de salida para exportar resultados"));
+        chkExport.setTooltip(tt("Exportar tour en TXT y JSON"));
+        btnRun.setTooltip(tt("Ejecutar búsqueda"));
+        btnPause.setTooltip(tt("Pausar/Reanudar animación"));
+        btnStop.setTooltip(tt("Detener cálculo/animación actual"));
+
+        // Initial UI state
+        btnPause.setDisable(true); // enabled only while animating
+        btnStop.setDisable(true); // enabled only while running
+        setAnimating(false);
+
+        // Help content & listeners
+        cbMode.getSelectionModel().selectedItemProperty().addListener((o, a, b) -> refreshHelp());
+        cbStrategy.getSelectionModel().selectedItemProperty().addListener((o, a, b) -> refreshHelp());
+        chkClosed.selectedProperty().addListener((o, a, b) -> refreshHelp());
+        refreshHelp();
     }
 
+    // Build the contextual help text
+    private void refreshHelp() {
+        Map<String, String> modeHelp = Map.of(
+                "single", "Finds a single tour and stops. Usually faster.",
+                "all", "Enumerates all tours. Can take very long on large boards.");
+        Map<String, String> strategyHelp = Map.of(
+                "backtrack", "Exhaustive backtracking; guaranteed to find a solution if one exists.",
+                "warnsdorff", "Warnsdorff heuristic; very fast in many cases.",
+                "parallel", "Parallel backtracking; splits work across threads.");
+
+        String mode = getSelectedMode();
+        String strat = getSelectedStrategy();
+        boolean closed = isClosed();
+
+        String text = """
+                • Mode: %s
+                  %s
+
+                • Strategy: %s
+                  %s
+
+                • Tour type: %s
+
+                Tips:
+                - Large boards + "all" can take a very long time.
+                - "parallel" leverages multiple threads; adjust 'Fork depth' and 'Pool size'.
+                """.formatted(
+                mode, modeHelp.getOrDefault(mode, ""),
+                strat, strategyHelp.getOrDefault(strat, ""),
+                closed ? "Closed (returns to the start)" : "Open");
+
+        helpText.getChildren().setAll(new Text(text));
+        // IMPORTANT: ensure CSS gets applied to the Text nodes
+        helpText.getChildren().forEach(n -> n.getStyleClass().add("text"));
+    }
+
+    // Layout helpers
     private HBox row(Object leftLabel, Object leftControl, Object rightLabel, Object rightControl) {
         Node l = node(leftLabel);
         Node lc = node(leftControl);
@@ -139,7 +258,9 @@ public class ControlsPane extends VBox {
         Node rc = node(rightControl);
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
-        return new HBox(12, l, lc, spacer, r, rc);
+        HBox h = new HBox(12, l, lc, spacer, r, rc);
+        h.setAlignment(Pos.CENTER_LEFT);
+        return h;
     }
 
     private HBox row(Object leftLabel, Object leftControl) {
@@ -147,13 +268,16 @@ public class ControlsPane extends VBox {
         Node lc = node(leftControl);
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
-        return new HBox(12, l, lc, spacer);
+        HBox h = new HBox(12, l, lc, spacer);
+        h.setAlignment(Pos.CENTER_LEFT);
+        return h;
     }
 
     private Node node(Object o) {
         return (o instanceof Node n) ? n : new Label(String.valueOf(o));
     }
 
+    // Public wiring API
     public void setOnRun(Consumer<RunConfig> onRun) {
         this.onRun = onRun;
     }
@@ -166,10 +290,63 @@ public class ControlsPane extends VBox {
         this.onPauseChanged = onPauseChanged;
     }
 
+    public void setOnStop(Runnable onStop) {
+        this.onStop = onStop;
+    }
+
     public void showMessage(String msg) {
         status.setText(msg);
     }
 
+    // Expose selection as getters + observable properties (if needed externally)
+    public String getSelectedMode() {
+        return cbMode.getValue();
+    }
+
+    public String getSelectedStrategy() {
+        return cbStrategy.getValue();
+    }
+
+    public boolean isClosed() {
+        return chkClosed.isSelected();
+    }
+
+    public javafx.beans.property.ReadOnlyObjectProperty<String> selectedModeProperty() {
+        return cbMode.getSelectionModel().selectedItemProperty();
+    }
+
+    public javafx.beans.property.ReadOnlyObjectProperty<String> selectedStrategyProperty() {
+        return cbStrategy.getSelectionModel().selectedItemProperty();
+    }
+
+    public javafx.beans.property.BooleanProperty closedProperty() {
+        return chkClosed.selectedProperty();
+    }
+
+    // UI state helpers
+    /** Enables/disables the Run button and updates the status label. */
+    public void setRunning(boolean running) {
+        btnRun.setDisable(running);
+        status.setText(running ? "Running..." : "Ready");
+        btnStop.setDisable(!running); // Stop only makes sense when something is running
+    }
+
+    /** Enables/disables Pause button; resets its label when disabling. */
+    public void setAnimating(boolean animating) {
+        btnPause.setDisable(!animating);
+        if (!animating) {
+            paused = false;
+            btnPause.setText("Pause");
+        }
+    }
+
+    /** Programmatically set pause state and label. */
+    public void setPaused(boolean paused) {
+        this.paused = paused;
+        btnPause.setText(paused ? "Resume" : "Pause");
+    }
+
+    // Build current config snapshot
     private RunConfig currentConfig() {
         int rows = spRows.getValue();
         int cols = spCols.getValue();
@@ -185,6 +362,7 @@ public class ControlsPane extends VBox {
                 tfOut.getText());
     }
 
+    // Data record
     public record RunConfig(
             int rows, int cols,
             int startRow, int startCol,
@@ -195,6 +373,7 @@ public class ControlsPane extends VBox {
             int msPerStep,
             boolean export,
             String exportDir) {
+
         public Map<String, Object> metadata(String modeEffective) {
             String ts = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
             Map<String, Object> m = new java.util.LinkedHashMap<>();
@@ -214,29 +393,34 @@ public class ControlsPane extends VBox {
         }
     }
 
-    /** Enables/disables the Run button and updates the status label. */
-    public void setRunning(boolean running) {
-        btnRun.setDisable(running);
-        status.setText(running ? "Running..." : "Ready");
-        btnStop.setDisable(!running);
+    // Small UX helpers
+    private static Tooltip tt(String text) {
+        Tooltip t = new Tooltip(text);
+        t.setShowDelay(javafx.util.Duration.millis(200));
+        t.setHideDelay(javafx.util.Duration.ZERO);
+        t.setShowDuration(javafx.util.Duration.seconds(30));
+        return t;
     }
 
-    /** Enables/disables Pause button; resets its label when disabling. */
-    public void setAnimating(boolean animating) {
-        btnPause.setDisable(!animating);
-        if (!animating) {
-            paused = false;
-            btnPause.setText("Pause");
-        }
+    private static <T> void enableScroll(Spinner<T> sp) {
+        sp.addEventFilter(javafx.scene.input.ScrollEvent.SCROLL, ev -> {
+            if (ev.getDeltaY() > 0)
+                sp.increment();
+            else
+                sp.decrement();
+            ev.consume();
+        });
     }
 
-    /** Programmatically set pause state and label. */
-    public void setPaused(boolean paused) {
-        this.paused = paused;
-        btnPause.setText(paused ? "Resume" : "Pause");
+    private static void selectAllOnFocus(Spinner<?> sp) {
+        var tf = sp.getEditor();
+        tf.focusedProperty().addListener((o, oldV, now) -> {
+            if (now)
+                Platform.runLater(tf::selectAll);
+        });
     }
 
-    public void setOnStop(Runnable onStop) {
-        this.onStop = onStop;
+    private static void centerText(Spinner<?> sp) {
+        sp.getEditor().setAlignment(Pos.CENTER);
     }
 }
