@@ -65,8 +65,8 @@ public class MainFX extends Application {
         // TOP: controls centered in an HBox wrapper
         HBox topBox = new HBox(controls);
         topBox.setAlignment(Pos.CENTER);
-        controls.setMaxWidth(980); // give it room for grid + help
-        controls.setPrefWidth(940);
+        controls.setMaxWidth(720); // give it room for grid + help
+        controls.setPrefWidth(720);
         root.setTop(topBox);
 
         // CENTER: square, centered board holder
