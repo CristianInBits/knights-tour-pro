@@ -119,11 +119,20 @@ After `./gradlew shadowJar`:
 java -jar build/libs/knights-tour-pro-1.0.0-all.jar <rows> <cols> <startRow> <startCol> <mode> <tourType> [strategy] [flags...]
 ```
 
-### Using Gradle
+### Using Gradle (CLI)
 
 ```bash
 ./gradlew run --args="6 6 0 0 single open backtrack"
 ```
+
+### Using Gradle (JavaFX GUI)
+
+```bash
+./gradlew runFx
+```
+
+> This launches the **JavaFX GUI** instead of the command-line interface.
+> No arguments are required; you can configure the board size, start position, mode, and solver directly in the graphical interface.
 
 ---
 
