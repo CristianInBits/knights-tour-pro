@@ -387,6 +387,13 @@ Medido: **sin coste apreciable** en el rendimiento.
 | SVG | verlo dibujado; el trazo degrada de índigo a cian según avanza |
 | CSV | cargarlo en una hoja de cálculo; una fila por movimiento |
 
+Cada ejecución escribe en **su propia carpeta**, nombrada con la fecha y hora de inicio:
+`output/2026-09-18_234327/`. Antes los ficheros iban a nombres fijos, así que una segunda
+ejecución borraba la anterior sin avisar. La carpeta se crea con `Files.createDirectory`,
+que falla si el nombre ya existe, de modo que comprobar y reservar el nombre ocurren en un
+solo paso: dos ejecuciones en el mismo segundo —o dos procesos a la vez— reciben carpetas
+distintas en lugar de pisarse.
+
 ### Códigos de salida
 
 La línea de comandos distingue cuatro finales, para que un script pueda actuar en

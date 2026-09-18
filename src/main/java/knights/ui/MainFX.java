@@ -17,6 +17,8 @@ import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
 
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CancellationException;
@@ -186,11 +188,13 @@ public class MainFX extends Application {
                 ResultExporter svg = new SvgExporter();
                 ResultExporter csv = new CsvExporter();
                 try {
-                    txt.exportSingle(result.path(), result.metadata(), cfg.exportDir() + "/tour.txt");
-                    json.exportSingle(result.path(), result.metadata(), cfg.exportDir() + "/tour.json");
-                    svg.exportSingle(result.path(), result.metadata(), cfg.exportDir() + "/tour.svg");
-                    csv.exportSingle(result.path(), result.metadata(), cfg.exportDir() + "/tour.csv");
-                    controls.showMessage("Exported to " + cfg.exportDir());
+                    // A folder per run, so pressing Run twice keeps both results
+                    Path runDir = RunDirectory.createUnder(Paths.get(cfg.exportDir()));
+                    txt.exportSingle(result.path(), result.metadata(), runDir.resolve("tour.txt").toString());
+                    json.exportSingle(result.path(), result.metadata(), runDir.resolve("tour.json").toString());
+                    svg.exportSingle(result.path(), result.metadata(), runDir.resolve("tour.svg").toString());
+                    csv.exportSingle(result.path(), result.metadata(), runDir.resolve("tour.csv").toString());
+                    controls.showMessage("Exported to " + runDir.getFileName());
                 } catch (IOException ex) {
                     // Reaching the user matters more than the tour itself being fine:
                     // silently skipping the files is how you lose a long run's results.

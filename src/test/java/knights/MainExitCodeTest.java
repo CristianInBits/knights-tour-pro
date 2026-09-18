@@ -7,6 +7,7 @@ import org.junit.jupiter.api.io.TempDir;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -135,25 +136,49 @@ class MainExitCodeTest {
 
     @Test
     @Timeout(20)
-    void writingTheTourReportsSuccess(@TempDir Path dir) {
+    void writingTheTourReportsSuccess(@TempDir Path dir) throws IOException {
         Path out = dir.resolve("results");
         assertEquals(Main.OK,
                 Main.run(new String[] { "5", "5", "0", "0", "single", "open", "warnsdorff",
                         "--no-print", "--out", out.toString() }));
-        assertTrue(Files.exists(out.resolve("tour.txt")));
-        assertTrue(Files.exists(out.resolve("tour.json")));
+
+        Path runDir = onlyRunFolder(out);
+        assertTrue(Files.exists(runDir.resolve("tour.txt")));
+        assertTrue(Files.exists(runDir.resolve("tour.json")));
+        assertTrue(Files.exists(runDir.resolve("tour.svg")));
+        assertTrue(Files.exists(runDir.resolve("tour.csv")));
     }
 
     @Test
-    @Timeout(20)
-    void aFailedWriteIsReportedAsAnIoError(@TempDir Path dir) throws IOException {
-        // A directory sitting where tour.txt should go: the search succeeds, the write cannot.
+    @Timeout(40)
+    void aSecondRunDoesNotOverwriteTheFirst(@TempDir Path dir) throws IOException {
+        // Results used to land on fixed names, so running twice lost the earlier one.
         Path out = dir.resolve("results");
-        Files.createDirectories(out.resolve("tour.txt"));
+        String[] args = { "5", "5", "0", "0", "single", "open", "warnsdorff",
+                "--no-print", "--out", out.toString() };
 
-        assertEquals(Main.IO_ERROR,
-                Main.run(new String[] { "5", "5", "0", "0", "single", "open", "warnsdorff",
-                        "--no-print", "--out", out.toString() }));
+        assertEquals(Main.OK, Main.run(args));
+        assertEquals(Main.OK, Main.run(args));
+        assertEquals(Main.OK, Main.run(args));
+
+        List<Path> runs = runFolders(out);
+        assertEquals(3, runs.size(), "each run should have left its own folder");
+        for (Path run : runs) {
+            assertTrue(Files.exists(run.resolve("tour.txt")), run.getFileName() + " lost its files");
+            assertTrue(Files.size(run.resolve("tour.txt")) > 0);
+        }
+    }
+
+    private static List<Path> runFolders(Path out) throws IOException {
+        try (var entries = Files.list(out)) {
+            return entries.filter(Files::isDirectory).sorted().toList();
+        }
+    }
+
+    private static Path onlyRunFolder(Path out) throws IOException {
+        List<Path> runs = runFolders(out);
+        assertEquals(1, runs.size(), "expected exactly one run folder");
+        return runs.get(0);
     }
 
     @Test

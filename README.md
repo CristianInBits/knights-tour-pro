@@ -71,7 +71,7 @@ java -jar build/libs/knights-tour-pro-1.0.0-all.jar <rows> <cols> <startRow> <st
 | Flag | Description |
 | ---- | ----------- |
 | `--limit N` | In `all` mode, how many solutions to print (default 3). Does not limit the export |
-| `--out DIR` | Where to write the exports (default `output`) |
+| `--out DIR` | Directory the per-run folders go in (default `output`) |
 | `--no-print` | Do not print boards to the console |
 | `--no-export` | Do not write any files |
 | `--fork-depth N` | `parallel` only: how deep to keep splitting the search (default 2) |
@@ -138,8 +138,19 @@ too big.
 
 ## Output files
 
-Every run writes four files unless you pass `--no-export`: `tour.txt`, `tour.json`,
-`tour.svg` and `tour.csv` in `single` mode, the same names pluralised in `all` mode.
+Every run gets its own folder under the output directory, named after the time it started,
+and writes four files into it unless you pass `--no-export`:
+
+```text
+output/
+├── 2026-09-18_234327/     tour.txt  tour.json  tour.svg  tour.csv
+├── 2026-09-18_234327_2/   a second run in the same second gets a suffix
+└── 2026-09-19_101502/
+```
+
+The names are `tours.*` in `all` mode. Nothing is ever overwritten: run the program twice
+and you keep both results, with each run's four formats sitting together. Folder names sort
+into chronological order.
 
 **`tour.txt`** — metadata sorted by name, then each step as a 1-based index and a square:
 
@@ -284,6 +295,7 @@ on a fork, update the wrapper:
 ```
 
 **No output files.** Check the `--out` directory and that you have not passed `--no-export`.
+The files are one level down, inside the folder named after the time the run started.
 
 **A search never finishes.** Some combinations are far harder than they look — a closed tour
 on a large board from a corner, for instance. Try `parallel` with `--fork-depth 4`, or a

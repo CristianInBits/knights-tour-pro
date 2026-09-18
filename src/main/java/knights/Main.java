@@ -2,6 +2,7 @@ package knights;
 
 import knights.export.JsonExporter;
 import knights.export.ResultExporter;
+import knights.export.RunDirectory;
 import knights.export.CsvExporter;
 import knights.export.SvgExporter;
 import knights.export.TxtExporter;
@@ -220,10 +221,12 @@ public final class Main {
         ResultExporter csvExporter = new CsvExporter();
 
         // Ensure output directory exists (only if exporting)
+        // Each run writes into its own folder, so a second run never overwrites the first.
         Path outBase = Paths.get(outDir);
+        Path runDir = null;
         if (doExport) {
             try {
-                Files.createDirectories(outBase);
+                runDir = RunDirectory.createUnder(outBase);
             } catch (Exception e) {
                 System.err.println("Failed to create output directory '" + outBase + "': " + e.getMessage());
                 return IO_ERROR;
@@ -272,16 +275,16 @@ public final class Main {
             }
 
             if (doExport) {
-                Path txt = outBase.resolve("tours.txt");
-                Path json = outBase.resolve("tours.json");
-                Path svg = outBase.resolve("tours.svg");
-                Path csv = outBase.resolve("tours.csv");
+                Path txt = runDir.resolve("tours.txt");
+                Path json = runDir.resolve("tours.json");
+                Path svg = runDir.resolve("tours.svg");
+                Path csv = runDir.resolve("tours.csv");
                 try {
                     txtExporter.exportMultiple(allSolutions, metadata, txt.toString());
                     jsonExporter.exportMultiple(allSolutions, metadata, json.toString());
                     svgExporter.exportMultiple(allSolutions, metadata, svg.toString());
                     csvExporter.exportMultiple(allSolutions, metadata, csv.toString());
-                    System.out.println("Exported to " + outBase);
+                    System.out.println("Exported to " + runDir);
                 } catch (IOException e) {
                     System.err.println("Failed to export: " + e.getMessage());
                     return IO_ERROR;
@@ -336,16 +339,16 @@ public final class Main {
             }
 
             if (doExport) {
-                Path txt = outBase.resolve("tour.txt");
-                Path json = outBase.resolve("tour.json");
-                Path svg = outBase.resolve("tour.svg");
-                Path csv = outBase.resolve("tour.csv");
+                Path txt = runDir.resolve("tour.txt");
+                Path json = runDir.resolve("tour.json");
+                Path svg = runDir.resolve("tour.svg");
+                Path csv = runDir.resolve("tour.csv");
                 try {
                     txtExporter.exportSingle(solution, metadata, txt.toString());
                     jsonExporter.exportSingle(solution, metadata, json.toString());
                     svgExporter.exportSingle(solution, metadata, svg.toString());
                     csvExporter.exportSingle(solution, metadata, csv.toString());
-                    System.out.println("Exported to " + outBase);
+                    System.out.println("Exported to " + runDir);
                 } catch (IOException e) {
                     System.err.println("Failed to export: " + e.getMessage());
                     return IO_ERROR;
