@@ -1,53 +1,50 @@
 # Java & Gradle project .gitignore
 
 # Build output
-
 /build/
 /out/
 /bin/
 
 # Gradle cache
-
 .gradle/
-!gradle/wrapper/gradle-wrapper.jar
 
 # IDEs
-
 .idea/
-\*.iml
+*.iml
 .vscode/
 
 # Logs
-
-\*.log
+*.log
 
 # Compiled class files
-
-\*.class
+*.class
 
 # Package files
-
-\*.jar
-\*.war
-\*.ear
-\*.zip
-\*.tar.gz
-\*.rar
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+*.rar
 
 # JVM crash logs
-
-hs\_err\_pid\*
-replay\_pid\*
+hs_err_pid*
+replay_pid*
 
 # BlueJ
-
-\*.ctxt
+*.ctxt
 
 # Mobile Tools for Java (J2ME)
-
 .mtj.tmp/
 
 # OS generated files
-
-.DS\_Store
+.DS_Store
 Thumbs.db
+
+# Runtime exports (CLI and GUI)
+/output/
+/output1_gui/
+/output2_gui/
+
+# Keep the Gradle wrapper JAR: this negation must stay AFTER the *.jar rule above
+!gradle/wrapper/gradle-wrapper.jar
