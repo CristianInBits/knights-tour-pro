@@ -3,9 +3,11 @@ package knights.ui;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.geometry.HPos;
+import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.geometry.VPos;
 import javafx.scene.CacheHint;
+import javafx.scene.Node;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
@@ -180,8 +182,8 @@ public class BoardView extends GridPane {
         final StackPane root = new StackPane();
         final Rectangle rect = new Rectangle();
 
-        // Vertical content: knight (image or glyph) on top, step number below
-        final VBox content = new VBox(4);
+        // The knight sits in the middle of the square and the step number in a corner,
+        // so neither has to give up room for the other.
         final ImageView knightView; // may be null if no image
         final Text knightGlyph; // fallback ♞ if no image
         final Text stepText = new Text("");
@@ -209,29 +211,19 @@ public class BoardView extends GridPane {
                 knightView.setSmooth(true);
                 knightView.setCache(true);
                 knightView.setCacheHint(CacheHint.SPEED);
-                // Knight takes ~60% of the cell’s shorter side
-                knightView.fitWidthProperty().bind(root.widthProperty().multiply(0.52));
-                knightView.fitHeightProperty().bind(root.heightProperty().multiply(0.52));
-                // A hidden knight must not hold its space, or the step number below it
-                // sits off-centre on every square the knight is not standing on.
-                knightView.managedProperty().bind(knightView.visibleProperty());
+                // The knight now has the whole square to itself
+                knightView.fitWidthProperty().bind(root.widthProperty().multiply(0.66));
+                knightView.fitHeightProperty().bind(root.heightProperty().multiply(0.66));
                 knightGlyph = null;
             } else {
                 knightView = null;
                 knightGlyph = new Text("♞");
-                knightGlyph.managedProperty().bind(knightGlyph.visibleProperty());
             }
 
-            stepText.setManaged(true);
+            Node knight = (knightView != null) ? knightView : knightGlyph;
+
             stepText.setFill(Color.WHITE);
-
-            content.setAlignment(Pos.CENTER);
-            content.setFillWidth(false);
-            if (knightView != null) {
-                content.getChildren().addAll(knightView, stepText);
-            } else {
-                content.getChildren().addAll(knightGlyph, stepText);
-            }
+            StackPane.setAlignment(stepText, Pos.TOP_LEFT);
 
             // Dynamic scaling
             root.widthProperty().addListener((o, ov, nv) -> updateFonts());
@@ -240,15 +232,18 @@ public class BoardView extends GridPane {
             // At start, knight is hidden (it appears only on the current cell)
             showKnight(false);
 
-            root.getChildren().addAll(rect, content);
+            root.getChildren().addAll(rect, knight, stepText);
         }
 
         /** Adjust fonts (and glyph color for contrast on base background). */
         void updateFonts() {
             double side = Math.min(root.getWidth(), root.getHeight());
-            double stepSize = Math.max(9, side * 0.19); // step number ≈ 19% of side
+            // Small enough to stay out of the knight's way, and inset from the rounded
+            // corner so it never touches the edge.
+            double stepSize = Math.max(8, side * 0.155);
             stepText.setFont(Font.font(stepSize));
-            // stepText.setStyle("-fx-font-size: " + (int) stepSize + "px; -fx-font-weight: bold;");
+            double inset = Math.max(3, side * 0.075);
+            StackPane.setMargin(stepText, new Insets(inset, 0, 0, inset));
 
             if (knightGlyph != null) {
                 double ksize = Math.max(12, side * 0.52); // glyph ≈ 52% of side
@@ -267,7 +262,7 @@ public class BoardView extends GridPane {
         void mark(int step, double progress) {
             rect.setFill(trailColour(progress));
             stepText.setText(Integer.toString(step));
-            stepText.setFill(Color.web("#f2f4f8"));
+            stepText.setFill(Color.web("#f2f4f8").deriveColor(0, 1, 1, 0.72));
         }
 
         private static Color trailColour(double progress) {
