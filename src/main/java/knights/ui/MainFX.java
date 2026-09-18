@@ -183,9 +183,11 @@ public class MainFX extends Application {
                 // Simple (sync) export; if files grow large, move to a background task
                 ResultExporter txt = new TxtExporter();
                 ResultExporter json = new JsonExporter();
+                ResultExporter svg = new SvgExporter();
                 try {
                     txt.exportSingle(result.path(), result.metadata(), cfg.exportDir() + "/tour.txt");
                     json.exportSingle(result.path(), result.metadata(), cfg.exportDir() + "/tour.json");
+                    svg.exportSingle(result.path(), result.metadata(), cfg.exportDir() + "/tour.svg");
                     controls.showMessage("Exported to " + cfg.exportDir());
                 } catch (IOException ex) {
                     // Reaching the user matters more than the tour itself being fine:

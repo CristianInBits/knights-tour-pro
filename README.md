@@ -133,8 +133,8 @@ too big.
 
 ## Output files
 
-Every run writes two files unless you pass `--no-export`: `tour.txt` and `tour.json` in
-`single` mode, `tours.txt` and `tours.json` in `all` mode.
+Every run writes three files unless you pass `--no-export`: `tour.txt`, `tour.json` and
+`tour.svg` in `single` mode, the same names pluralised in `all` mode.
 
 **`tour.txt`** — metadata sorted by name, then each step as a 1-based index and a square:
 
@@ -173,6 +173,11 @@ Solution #1:
 }
 ```
 
+**`tour.svg`** — the board drawn, for looking at rather than parsing. The line joining the
+squares shades from indigo to cyan along the tour, so the order reads without following the
+numbers, and the starting square is outlined. Several tours are laid out in a grid, so an
+`all` run over a large board produces a correspondingly large drawing.
+
 Runs with `parallel` add `forkDepth` and `pool` to the metadata.
 
 ---
@@ -184,7 +189,7 @@ src/
 ├── main/java/knights/
 │   ├── model/      Board, Position, KnightMove
 │   ├── solver/     the four strategies, behind two interfaces
-│   ├── export/     TxtExporter, JsonExporter
+│   ├── export/     TxtExporter, JsonExporter, SvgExporter
 │   ├── ui/         JavaFX interface
 │   └── Main.java   command line
 ├── test/java/      JUnit 5
@@ -269,13 +274,13 @@ smaller board. In the interface, press Stop.
 
 Done so far: the four strategies, open and closed tours, TXT and JSON exports, the JavaFX
 interface, JMH benchmarks, CI, a precomputed neighbour table, cancellable searches,
-exporters that report a failed write instead of swallowing it, and meaningful exit codes
-with tests covering the argument parsing.
+exporters that report a failed write instead of swallowing it, SVG drawings of the board,
+and meaningful exit codes with tests covering the argument parsing.
 
 Still open:
 
 * Parallel enumeration of *all* tours with work stealing — today `all` mode is single-threaded.
-* More export formats: CSV, and an SVG drawing of the board.
+* CSV export.
 * A web front end.
 
 ---

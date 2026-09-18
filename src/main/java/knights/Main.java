@@ -2,6 +2,7 @@ package knights;
 
 import knights.export.JsonExporter;
 import knights.export.ResultExporter;
+import knights.export.SvgExporter;
 import knights.export.TxtExporter;
 import knights.model.Board;
 import knights.model.Position;
@@ -214,6 +215,7 @@ public final class Main {
         // ---- Choose exporters ----
         ResultExporter txtExporter = new TxtExporter();
         ResultExporter jsonExporter = new JsonExporter();
+        ResultExporter svgExporter = new SvgExporter();
 
         // Ensure output directory exists (only if exporting)
         Path outBase = Paths.get(outDir);
@@ -258,10 +260,12 @@ public final class Main {
             if (doExport) {
                 Path txt = outBase.resolve("tours.txt");
                 Path json = outBase.resolve("tours.json");
+                Path svg = outBase.resolve("tours.svg");
                 try {
                     txtExporter.exportMultiple(allSolutions, metadata, txt.toString());
                     jsonExporter.exportMultiple(allSolutions, metadata, json.toString());
-                    System.out.println("Exported to " + txt + " and " + json);
+                    svgExporter.exportMultiple(allSolutions, metadata, svg.toString());
+                    System.out.println("Exported to " + outBase);
                 } catch (IOException e) {
                     System.err.println("Failed to export: " + e.getMessage());
                     return IO_ERROR;
@@ -318,10 +322,12 @@ public final class Main {
             if (doExport) {
                 Path txt = outBase.resolve("tour.txt");
                 Path json = outBase.resolve("tour.json");
+                Path svg = outBase.resolve("tour.svg");
                 try {
                     txtExporter.exportSingle(solution, metadata, txt.toString());
                     jsonExporter.exportSingle(solution, metadata, json.toString());
-                    System.out.println("Exported to " + txt + " and " + json);
+                    svgExporter.exportSingle(solution, metadata, svg.toString());
+                    System.out.println("Exported to " + outBase);
                 } catch (IOException e) {
                     System.err.println("Failed to export: " + e.getMessage());
                     return IO_ERROR;
