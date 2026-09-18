@@ -229,6 +229,8 @@ Highlights:
 
 * Solvers: backtracking (single & all), Warnsdorff, **parallel backtracking**.
 * Tour geometry checks: length, uniqueness, knight adjacency, closedness (when applicable).
+* Model: board marking and copying, and the precomputed neighbour table — including the
+  order moves come out in, which decides the tour each solver returns.
 * Exporters: TXT/JSON content & structure.
 * CLI smoke tests (optional) for typical scenarios.
 
