@@ -81,12 +81,10 @@ tasks.register<JavaExec>("runFx") {
 }
 
 jmh {
-    // Reasonable defaults; override with -P properties if needed
-    warmupIterations.set(3)
-    iterations.set(5)
-    fork.set(1)
-    benchmarkMode.set(listOf("Throughput"))
-    timeUnit.set("ms")
+    // No defaults on purpose. Anything set here is applied to every benchmark and wins
+    // over its annotations, so the values below used to override each class's own
+    // @BenchmarkMode, @Warmup and @Measurement without saying so. Each benchmark now
+    // chooses its own mode and iteration counts; use the -P knobs for one-off runs.
 
     // Allow selecting benchmarks via: -PjmhInclude='.*YourBenchmark.*'
     val includeProp = project.findProperty("jmhInclude") as String?
