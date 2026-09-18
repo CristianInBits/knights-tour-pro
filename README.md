@@ -244,11 +244,11 @@ Run:
 
 Benchmarks live in `src/jmh/java`.
 
-* **SingleTourBenchmark** – compares strategies across sizes/starts for one tour.
-* **ParallelVsSequentialBenchmark** – focused comparison:
-
-  * Case: **6×6**, start at **center**, open tour.
-  * Shows dramatic speedup of **parallel backtracking** over sequential.
+* **SingleTourBenchmark** – compares strategies across sizes and starting squares.
+* **ParallelVsSequentialBenchmark** – separates the two things that make the parallel solver
+  fast: the Warnsdorff move ordering and the forking. It runs an open and a closed tour,
+  because which of the two helps reverses between them.
+* **AllSolutionsBenchmark** – cost of enumerating every tour.
 
 Run:
 
@@ -258,7 +258,10 @@ Run:
 ./gradlew jmh -PjmhInclude='.*ParallelVsSequentialBenchmark.*'
 ```
 
-> Tip: switch to `Mode.AverageTime` if you prefer ms/op directly.
+> Each benchmark picks its own mode and iteration counts through annotations. Anything set
+> in the `jmh { }` block of `build.gradle.kts` is applied to every class and overrides them.
+
+Measured numbers and what they mean: [benchmark report](docs/Knights%20Tour%20Pro%20-%20Benchmark%20Report%20%28JMH%29.md).
 
 ---
 
