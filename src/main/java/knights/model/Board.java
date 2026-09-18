@@ -1,5 +1,6 @@
 package knights.model;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -13,6 +14,12 @@ public class Board {
     private final int[][] path;
     private int steps;
 
+    /**
+     * In-bounds knight moves for every square, indexed by row * cols + col.
+     * Built once per board size and never modified, so copies share it.
+     */
+    private final List<List<Position>> neighbours;
+
     public static final int UNVISITED = -1;
 
     public Board(Board other) {
@@ -23,6 +30,9 @@ public class Board {
             System.arraycopy(other.path[i], 0, this.path[i], 0, cols);
         }
         this.steps = other.steps;
+        // Same dimensions, and the table is immutable: sharing it keeps copies cheap,
+        // which matters because the parallel solver copies a board per forked task.
+        this.neighbours = other.neighbours;
     }
 
     public Board(int rows, int cols) {
@@ -30,7 +40,30 @@ public class Board {
         this.cols = cols;
         this.path = new int[rows][cols];
         this.steps = 0;
+        this.neighbours = buildNeighbours(rows, cols);
         reset();
+    }
+
+    /**
+     * Precomputes the in-bounds destinations of every square, keeping the order of
+     * KnightMove.DX/DY so move ordering and its tie-breaks behave as before.
+     */
+    private static List<List<Position>> buildNeighbours(int rows, int cols) {
+        List<List<Position>> table = new ArrayList<>(rows * cols);
+        for (int r = 0; r < rows; r++) {
+            for (int c = 0; c < cols; c++) {
+                List<Position> moves = new ArrayList<>(KnightMove.TOTAL_MOVES);
+                for (int i = 0; i < KnightMove.TOTAL_MOVES; i++) {
+                    int nr = r + KnightMove.DX[i];
+                    int nc = c + KnightMove.DY[i];
+                    if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
+                        moves.add(new Position(nr, nc));
+                    }
+                }
+                table.add(List.copyOf(moves));
+            }
+        }
+        return List.copyOf(table);
     }
 
     public boolean isInside(Position p) {
@@ -79,9 +112,13 @@ public class Board {
         }
     }
 
+    /**
+     * Returns the in-bounds knight moves from 'from', in KnightMove.DX/DY order.
+     * This sits on the hot path of every solver, so the list is precomputed rather
+     * than built per call; it is immutable and must not be modified by callers.
+     * 'from' must be inside the board.
+     */
     public List<Position> legalMoves(Position from) {
-        return KnightMove.generateNextPositions(from).stream()
-                .filter(this::isInside)
-                .toList();
+        return neighbours.get(from.row() * cols + from.col());
     }
 }

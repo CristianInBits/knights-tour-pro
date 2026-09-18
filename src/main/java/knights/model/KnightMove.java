@@ -16,9 +16,15 @@ public final class KnightMove {
         // Prevent instantiation
     }
 
+    /**
+     * All eight knight destinations from 'from', bounds unchecked.
+     * Solvers use Board.legalMoves instead, which precomputes the in-bounds ones.
+     */
     public static List<Position> generateNextPositions(Position from) {
-        return java.util.stream.IntStream.range(0, TOTAL_MOVES)
-                .mapToObj(i -> new Position(from.row() + DX[i], from.col() + DY[i]))
-                .toList();
+        Position[] moves = new Position[TOTAL_MOVES];
+        for (int i = 0; i < TOTAL_MOVES; i++) {
+            moves[i] = new Position(from.row() + DX[i], from.col() + DY[i]);
+        }
+        return List.of(moves);
     }
 }
