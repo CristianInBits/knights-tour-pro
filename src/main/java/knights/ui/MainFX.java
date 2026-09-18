@@ -10,8 +10,9 @@ import javafx.beans.binding.Bindings;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
+import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.HBox;
 import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
 
@@ -29,6 +30,7 @@ public class MainFX extends Application {
 
     private ControlsPane controls;
     private BoardView boardView;
+    private Label placeholder;
 
     // Dedicated executor to avoid contending with commonPool / solver parallel pool
     private final ExecutorService computeExec = Executors.newFixedThreadPool(
@@ -60,19 +62,29 @@ public class MainFX extends Application {
 
         BorderPane root = new BorderPane();
 
-        // TOP: controls centered in an HBox wrapper
-        HBox topBox = new HBox(controls);
-        topBox.setAlignment(Pos.CENTER);
-        controls.setMaxWidth(720); // give it room for grid + help
-        controls.setPrefWidth(720);
-        root.setTop(topBox);
+        // LEFT: the controls, in a fixed-width column. The scroll pane only ever shows
+        // itself on a short window; at the default size everything fits.
+        ScrollPane sidebar = new ScrollPane(controls);
+        sidebar.getStyleClass().add("sidebar-scroll");
+        sidebar.setFitToWidth(true);
+        sidebar.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        sidebar.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        sidebar.setMinViewportHeight(0);
+        root.setLeft(sidebar);
 
-        // CENTER: square, centered board holder
-        StackPane boardHolder = new StackPane(boardView);
-        boardHolder.setPadding(new Insets(8)); // optional margin around the board
-        boardHolder.setStyle("-fx-background-color: #222;"); // board area background
+        // CENTRE: the board gets the rest of the window, kept square and centred
+        // Until the first run there is no board at all, so say so rather than leaving
+        // the largest part of the window blank.
+        placeholder = new Label("Set up the board and press Run");
+        placeholder.getStyleClass().add("board-empty");
 
-        var side = Bindings.min(boardHolder.widthProperty(), boardHolder.heightProperty());
+        StackPane boardHolder = new StackPane(placeholder, boardView);
+        boardHolder.getStyleClass().add("board-area");
+        boardHolder.setPadding(new Insets(28));
+
+        var side = Bindings.min(
+                boardHolder.widthProperty().subtract(56),
+                boardHolder.heightProperty().subtract(56));
         boardView.prefWidthProperty().bind(side);
         boardView.prefHeightProperty().bind(side);
         boardView.maxWidthProperty().bind(side);
@@ -91,6 +103,7 @@ public class MainFX extends Application {
         controls.setOnRun(cfg -> {
             final long startedAt = generation.incrementAndGet();
             controls.setRunning(true);
+            placeholder.setVisible(false);
             boardView.initGrid(cfg.rows(), cfg.cols()); // already on the FX thread
 
             Future<?> task = computeExec.submit(() -> {
@@ -129,10 +142,12 @@ public class MainFX extends Application {
         });
 
         // Scene + CSS
-        Scene scene = new Scene(root, 720, 900);
+        Scene scene = new Scene(root, 1120, 760);
         scene.getStylesheets().add(getClass().getResource("/app.css").toExternalForm());
         stage.setTitle("Knight's Tour Pro — JavaFX");
         stage.setScene(scene);
+        stage.setMinWidth(860);
+        stage.setMinHeight(620);
         stage.show();
     }
 

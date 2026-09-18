@@ -38,9 +38,9 @@ public class BoardView extends GridPane {
     private final Image knightImage;
 
     public BoardView() {
-        setHgap(1);
-        setVgap(1);
-        setStyle("-fx-background-color: #222;");
+        setHgap(3);
+        setVgap(3);
+        getStyleClass().add("board");
         setPrefSize(640, 640);
         setMinSize(200, 200);
         setMaxSize(Double.MAX_VALUE, Double.MAX_VALUE);
@@ -79,8 +79,9 @@ public class BoardView extends GridPane {
         cells = new Cell[rows][cols];
         for (int r = 0; r < rows; r++) {
             for (int c = 0; c < cols; c++) {
-                // Custom brown palette (light/dark)
-                Color base = ((r + c) % 2 == 0) ? Color.web("#a07c5e") : Color.web("#7a4323ff");
+                // Two close shades of slate: the chequer reads clearly without competing
+                // with the trail colour that will be painted over it.
+                Color base = ((r + c) % 2 == 0) ? Color.web("#242a36") : Color.web("#1a1f28");
                 Cell cell = new Cell(base, knightImage);
                 cells[r][c] = cell;
                 add(cell.root, c, r);
@@ -124,11 +125,13 @@ public class BoardView extends GridPane {
             final int sc = p.col();
             final int index = step;
 
+            final double progress = (path.size() > 1) ? (double) index / (path.size() - 1) : 0;
+
             KeyFrame kf = new KeyFrame(Duration.millis((long) index * msPerStep), e -> {
                 Cell cell = cells[sr][sc];
 
-                // 1) Leave a trail: color as visited + write step number
-                cell.mark(index + 1);
+                // 1) Leave a trail: colour by progress + write step number
+                cell.mark(index + 1, progress);
 
                 // 2) Move the knight: hide the old one, show the new one
                 if (last != null)
@@ -184,7 +187,6 @@ public class BoardView extends GridPane {
         final Text stepText = new Text("");
 
         final Color base;
-        final Color visited = Color.web("#39a55dff");
 
         Cell(Color base, Image sharedKnight) {
             this.base = base;
@@ -195,8 +197,8 @@ public class BoardView extends GridPane {
 
             rect.widthProperty().bind(root.widthProperty());
             rect.heightProperty().bind(root.heightProperty());
-            rect.setArcWidth(8);
-            rect.setArcHeight(8);
+            rect.setArcWidth(10);
+            rect.setArcHeight(10);
             rect.setFill(base);
             rect.setStroke(null); // no border
 
@@ -208,13 +210,16 @@ public class BoardView extends GridPane {
                 knightView.setCache(true);
                 knightView.setCacheHint(CacheHint.SPEED);
                 // Knight takes ~60% of the cell’s shorter side
-                knightView.fitWidthProperty().bind(root.widthProperty().multiply(0.60));
-                knightView.fitHeightProperty().bind(root.heightProperty().multiply(0.60));
+                knightView.fitWidthProperty().bind(root.widthProperty().multiply(0.52));
+                knightView.fitHeightProperty().bind(root.heightProperty().multiply(0.52));
+                // A hidden knight must not hold its space, or the step number below it
+                // sits off-centre on every square the knight is not standing on.
+                knightView.managedProperty().bind(knightView.visibleProperty());
                 knightGlyph = null;
             } else {
                 knightView = null;
                 knightGlyph = new Text("♞");
-                knightGlyph.setManaged(true);
+                knightGlyph.managedProperty().bind(knightGlyph.visibleProperty());
             }
 
             stepText.setManaged(true);
@@ -241,7 +246,7 @@ public class BoardView extends GridPane {
         /** Adjust fonts (and glyph color for contrast on base background). */
         void updateFonts() {
             double side = Math.min(root.getWidth(), root.getHeight());
-            double stepSize = Math.max(10, side * 0.22); // step number ≈ 22% of side
+            double stepSize = Math.max(9, side * 0.19); // step number ≈ 19% of side
             stepText.setFont(Font.font(stepSize));
             // stepText.setStyle("-fx-font-size: " + (int) stepSize + "px; -fx-font-weight: bold;");
 
@@ -255,13 +260,19 @@ public class BoardView extends GridPane {
         }
 
         /**
-         * Leaves a visited color and writes the step number. Does not toggle knight
-         * visibility.
+         * Paints the trail and writes the step number. 'progress' runs 0 to 1 across the
+         * tour, shifting the colour from indigo to cyan so the order of the moves can be
+         * read off the board at a glance. Does not toggle knight visibility.
          */
-        void mark(int step) {
-            rect.setFill(visited);
+        void mark(int step, double progress) {
+            rect.setFill(trailColour(progress));
             stepText.setText(Integer.toString(step));
-            stepText.setFill(Color.WHITE);
+            stepText.setFill(Color.web("#f2f4f8"));
+        }
+
+        private static Color trailColour(double progress) {
+            double t = Math.max(0, Math.min(1, progress));
+            return Color.web("#6366f1").interpolate(Color.web("#22d3ee"), t);
         }
 
         /** Shows/hides the knight (image or glyph). */
