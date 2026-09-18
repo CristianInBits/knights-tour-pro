@@ -36,6 +36,9 @@ public final class WarnsdorffSolver implements TourSolver {
 
         Position current = start;
         for (int step = 0; step < total; step++) {
+            if (step % Cancellation.CHECK_INTERVAL == 0) {
+                Cancellation.abortIfInterrupted();
+            }
             board.mark(current, step);
             path.add(current);
 

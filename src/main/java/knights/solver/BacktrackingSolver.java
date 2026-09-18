@@ -17,6 +17,9 @@ public class BacktrackingSolver implements TourSolver {
 
     private final boolean isClosed;
 
+    /** Counts down to the next cancellation check; see Cancellation.CHECK_INTERVAL. */
+    private int untilCancelCheck;
+
     public BacktrackingSolver(Board board, Position start, boolean isClosed) {
         this.board = board;
         this.start = start;
@@ -28,6 +31,7 @@ public class BacktrackingSolver implements TourSolver {
     public List<Position> solve() {
         board.reset();
         path.clear();
+        untilCancelCheck = Cancellation.CHECK_INTERVAL;
         board.mark(start, 0);
         path.add(start);
         if (dfs(start, 1)) {
@@ -38,6 +42,10 @@ public class BacktrackingSolver implements TourSolver {
     }
 
     private boolean dfs(Position current, int step) {
+        if (--untilCancelCheck <= 0) {
+            untilCancelCheck = Cancellation.CHECK_INTERVAL;
+            Cancellation.abortIfInterrupted();
+        }
         if (step == board.totalCells()) {
             return !isClosed || current.isAdjacent(start);
         }

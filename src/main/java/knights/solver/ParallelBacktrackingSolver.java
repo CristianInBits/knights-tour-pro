@@ -7,7 +7,10 @@ import knights.model.Position;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.ForkJoinTask;
 import java.util.concurrent.RecursiveTask;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -53,10 +56,30 @@ public final class ParallelBacktrackingSolver implements TourSolver {
         // Use a shared 'found' flag so that tasks can short-circuit when a solution
         // appears elsewhere.
         AtomicBoolean found = new AtomicBoolean(false);
+        // Interrupting this thread never reaches the pool's workers, so cancellation
+        // travels to them the same way a solution does: through a shared flag.
+        AtomicBoolean cancelled = new AtomicBoolean(false);
 
-        List<Position> res = pool.invoke(
-                new Task(board, start, List.of(), 0, closed, forkDepth, found));
-        return (res != null) ? res : List.of();
+        ForkJoinTask<List<Position>> task = pool.submit(
+                new Task(board, start, List.of(), 0, closed, forkDepth, found, cancelled));
+        try {
+            List<Position> res = task.get();
+            return (res != null) ? res : List.of();
+        } catch (InterruptedException e) {
+            cancelled.set(true);
+            task.cancel(true);
+            Thread.currentThread().interrupt(); // leave the flag set for our caller
+            throw new CancellationException("Search cancelled");
+        } catch (ExecutionException e) {
+            Throwable cause = e.getCause();
+            if (cause instanceof RuntimeException re) {
+                throw re;
+            }
+            if (cause instanceof Error error) {
+                throw error;
+            }
+            throw new IllegalStateException("Search failed", cause);
+        }
     }
 
     // ===== Inner Task =====
@@ -69,9 +92,11 @@ public final class ParallelBacktrackingSolver implements TourSolver {
         private final boolean closed;
         private final int forkDepth;
         private final AtomicBoolean found; // shared early-stop flag
+        private final AtomicBoolean cancelled; // shared give-up flag
 
         Task(Board board, Position pos, List<Position> parentPath,
-                int depth, boolean closed, int forkDepth, AtomicBoolean found) {
+                int depth, boolean closed, int forkDepth, AtomicBoolean found,
+                AtomicBoolean cancelled) {
             // Deep copy of board state at fork time:
             this.b = new Board(board);
             // Copy path so far; we'll append 'pos' in compute():
@@ -81,12 +106,18 @@ public final class ParallelBacktrackingSolver implements TourSolver {
             this.closed = closed;
             this.forkDepth = forkDepth;
             this.found = found;
+            this.cancelled = cancelled;
+        }
+
+        /** True once anyone found a tour or the caller gave up. */
+        private boolean shouldStop() {
+            return found.get() || cancelled.get();
         }
 
         @Override
         protected List<Position> compute() {
-            if (found.get())
-                return null; // global early-stop
+            if (shouldStop())
+                return null; // a tour turned up elsewhere, or the caller gave up
 
             // Place current position
             path.add(pos);
@@ -107,7 +138,7 @@ public final class ParallelBacktrackingSolver implements TourSolver {
 
             if (nextMoves.isEmpty())
                 return null;
-            if (found.get())
+            if (shouldStop())
                 return null;
 
             // Forking policy
@@ -116,12 +147,13 @@ public final class ParallelBacktrackingSolver implements TourSolver {
                 List<Task> forks = new ArrayList<>(Math.max(0, nextMoves.size() - 1));
 
                 for (int i = 1; i < nextMoves.size(); i++) {
-                    Task t = new Task(b, nextMoves.get(i), path, depth + 1, closed, forkDepth, found);
+                    Task t = new Task(b, nextMoves.get(i), path, depth + 1, closed, forkDepth, found, cancelled);
                     t.fork();
                     forks.add(t);
                 }
                 // Compute the first child on this thread
-                List<Position> res = new Task(b, nextMoves.get(0), path, depth + 1, closed, forkDepth, found).compute();
+                List<Position> res = new Task(b, nextMoves.get(0), path, depth + 1, closed, forkDepth, found, cancelled)
+                        .compute();
                 if (res != null) {
                     found.compareAndSet(false, true);
                     // Join to satisfy FJP invariants; children should short-circuit quickly
@@ -138,7 +170,7 @@ public final class ParallelBacktrackingSolver implements TourSolver {
                 return null;
             } else {
                 // Sequential fallback from this state
-                return dfsSequential(b, path, closed, found);
+                return dfsSequential(b, path, closed, found, cancelled);
             }
         }
 
@@ -180,8 +212,8 @@ public final class ParallelBacktrackingSolver implements TourSolver {
 
         // Sequential DFS using the same ordering; respects the global 'found' flag
         private static List<Position> dfsSequential(Board board, ArrayList<Position> path,
-                boolean closed, AtomicBoolean found) {
-            if (found.get())
+                boolean closed, AtomicBoolean found, AtomicBoolean cancelled) {
+            if (found.get() || cancelled.get())
                 return null;
 
             if (path.size() == board.totalCells()) {
@@ -196,14 +228,14 @@ public final class ParallelBacktrackingSolver implements TourSolver {
             List<Position> moves = orderedMoves(board, cur);
 
             for (Position nxt : moves) {
-                if (found.get())
+                if (found.get() || cancelled.get())
                     return null;
 
                 int step = path.size();
                 path.add(nxt);
                 board.mark(nxt, step);
 
-                List<Position> sol = dfsSequential(board, path, closed, found);
+                List<Position> sol = dfsSequential(board, path, closed, found, cancelled);
                 if (sol != null)
                     return sol;
 

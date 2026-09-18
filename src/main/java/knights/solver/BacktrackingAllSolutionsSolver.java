@@ -23,6 +23,9 @@ public final class BacktrackingAllSolutionsSolver implements AllToursSolver {
     private final List<Position> currentPath;
     private final List<List<Position>> allSolutions;
 
+    /** Counts down to the next cancellation check; see Cancellation.CHECK_INTERVAL. */
+    private int untilCancelCheck;
+
     public BacktrackingAllSolutionsSolver(Board board, Position start, boolean isClosed) {
         this.board = board;
         this.start = start;
@@ -40,6 +43,7 @@ public final class BacktrackingAllSolutionsSolver implements AllToursSolver {
     public List<Position> solve() {
         board.reset();
         currentPath.clear();
+        untilCancelCheck = Cancellation.CHECK_INTERVAL;
 
         board.mark(start, 0);
         currentPath.add(start);
@@ -57,6 +61,7 @@ public final class BacktrackingAllSolutionsSolver implements AllToursSolver {
         board.reset();
         currentPath.clear();
         allSolutions.clear();
+        untilCancelCheck = Cancellation.CHECK_INTERVAL;
 
         board.mark(start, 0);
         currentPath.add(start);
@@ -70,10 +75,18 @@ public final class BacktrackingAllSolutionsSolver implements AllToursSolver {
 
     // ===== Internals =====
 
+    private void checkCancellation() {
+        if (--untilCancelCheck <= 0) {
+            untilCancelCheck = Cancellation.CHECK_INTERVAL;
+            Cancellation.abortIfInterrupted();
+        }
+    }
+
     /**
      * DFS that stops at the first tour and returns it; returns null if none exists.
      */
     private List<Position> dfsFirst(Position current, int step) {
+        checkCancellation();
         if (step == board.totalCells()) {
             if (!isClosed || current.isAdjacent(start)) {
                 return new ArrayList<>(currentPath); // defensive copy
@@ -103,6 +116,7 @@ public final class BacktrackingAllSolutionsSolver implements AllToursSolver {
      * DFS that accumulates every tour into allSolutions.
      */
     private void dfsAll(Position current, int step) {
+        checkCancellation();
         if (step == board.totalCells()) {
             if (!isClosed || current.isAdjacent(start)) {
                 allSolutions.add(new ArrayList<>(currentPath)); // defensive copy
