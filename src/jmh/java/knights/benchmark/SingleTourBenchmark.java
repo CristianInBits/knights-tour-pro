@@ -5,8 +5,7 @@ import knights.model.Position;
 import knights.solver.BacktrackingSolver;
 import knights.solver.TourSolver;
 import knights.solver.WarnsdorffSolver;
-// Import parallel solver only if you actually have it:
-// import knights.solver.ParallelBacktrackingSolver;
+import knights.solver.ParallelBacktrackingSolver;
 
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.infra.Blackhole;
@@ -38,7 +37,7 @@ public class SingleTourBenchmark {
     @Param({ "open" }) // you may add "closed" if you want to test closed tours too
     public String tourType;
 
-    @Param({ "backtrack", "warnsdorff" }) // add "parallel" if available
+    @Param({ "backtrack", "warnsdorff", "parallel" })
     public String strategy;
 
     private Board board;
@@ -60,8 +59,8 @@ public class SingleTourBenchmark {
         switch (strategy.toLowerCase()) {
             case "warnsdorff":
                 return new WarnsdorffSolver(b, s, closed);
-            // case "parallel":
-            // return new ParallelBacktrackingSolver(b, s, closed, /*forkDepth*/ 2);
+            case "parallel":
+                return new ParallelBacktrackingSolver(b, s, closed, /* forkDepth */ 2);
             case "backtrack":
             default:
                 return new BacktrackingSolver(b, s, closed);
