@@ -34,7 +34,7 @@ public class BoardView extends GridPane {
     private Runnable onAnimationFinished;
 
     /** Knight PNG resource (transparent background recommended). */
-    private static final String KNIGHT_RESOURCE = "/knight.png";
+    private static final String KNIGHT_RESOURCE = "/knight2.png";
     private final Image knightImage;
 
     public BoardView() {
