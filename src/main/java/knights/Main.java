@@ -37,10 +37,27 @@ import java.util.concurrent.ForkJoinPool;
  */
 public final class Main {
 
+    /** Everything worked: a tour was found and, if asked for, written out. */
+    static final int OK = 0;
+    /** The run was fine but no tour exists for the board and rules given. */
+    static final int NO_SOLUTION = 1;
+    /** The arguments do not make sense; nothing was attempted. */
+    static final int USAGE = 2;
+    /** A file could not be written. */
+    static final int IO_ERROR = 3;
+
     public static void main(String[] args) {
+        System.exit(run(args));
+    }
+
+    /**
+     * The command line itself, returning the exit code rather than setting it, so that
+     * tests can check what a given set of arguments does without ending the JVM.
+     */
+    static int run(String[] args) {
         if (args.length < 6) {
             printUsage();
-            return;
+            return USAGE;
         }
 
         // ---- Parse positional arguments ----
@@ -54,7 +71,7 @@ public final class Main {
         } catch (NumberFormatException nfe) {
             System.err.println("Error: rows, cols, startRow, startCol must be integers.");
             printUsage();
-            return;
+            return USAGE;
         }
 
         modeRaw = args[4];
@@ -110,18 +127,18 @@ public final class Main {
             } else {
                 System.err.println("Unknown flag: " + token);
                 printUsage();
-                return;
+                return USAGE;
             }
 
             if (takesValue && value == null) {
                 if (i + 1 >= args.length || args[i + 1].startsWith("--")) {
                     System.err.println("Missing value for " + name);
-                    return;
+                    return USAGE;
                 }
                 value = args[++i];
             } else if (!takesValue && value != null) {
                 System.err.println(name + " does not take a value.");
-                return;
+                return USAGE;
             }
 
             try {
@@ -133,7 +150,7 @@ public final class Main {
                     case "--out" -> {
                         if (value.isBlank()) {
                             System.err.println("Missing value for --out");
-                            return;
+                            return USAGE;
                         }
                         outDir = value;
                     }
@@ -141,34 +158,34 @@ public final class Main {
                         int p = Integer.parseInt(value);
                         if (p <= 0) {
                             System.err.println("--pool must be > 0");
-                            return;
+                            return USAGE;
                         }
                         poolParallelism = p;
                     }
                 }
             } catch (NumberFormatException nfe) {
                 System.err.println("Invalid " + name + " value: " + value);
-                return;
+                return USAGE;
             }
         }
 
         // ---- Basic validations ----
         if (rows <= 0 || cols <= 0) {
             System.err.println("Error: rows and cols must be > 0.");
-            return;
+            return USAGE;
         }
         if (startRow < 0 || startRow >= rows || startCol < 0 || startCol >= cols) {
             System.err.printf("Error: start position (%d,%d) is outside the board %dx%d.%n",
                     startRow, startCol, rows, cols);
-            return;
+            return USAGE;
         }
         if (!mode.equals("single") && !mode.equals("all")) {
             System.err.println("Error: mode must be 'single' or 'all'.");
-            return;
+            return USAGE;
         }
         if (!strategy.equals("backtrack") && !strategy.equals("warnsdorff") && !strategy.equals("parallel")) {
             System.err.println("Error: strategy must be 'backtrack', 'warnsdorff', or 'parallel'.");
-            return;
+            return USAGE;
         }
 
         // ---- Setup board, start, metadata ----
@@ -205,7 +222,7 @@ public final class Main {
                 Files.createDirectories(outBase);
             } catch (Exception e) {
                 System.err.println("Failed to create output directory '" + outBase + "': " + e.getMessage());
-                return;
+                return IO_ERROR;
             }
         }
 
@@ -216,7 +233,7 @@ public final class Main {
             AllToursSolver allSolver = buildAllSolver(strategy, board, start, isClosed);
             if (allSolver == null) {
                 System.out.println("Selected strategy does not support 'all' mode. Try 'backtrack'.");
-                return;
+                return USAGE;
             }
 
             List<List<Position>> allSolutions = allSolver.solveAll();
@@ -247,9 +264,11 @@ public final class Main {
                     System.out.println("Exported to " + txt + " and " + json);
                 } catch (IOException e) {
                     System.err.println("Failed to export: " + e.getMessage());
-                    return;
+                    return IO_ERROR;
                 }
             }
+
+            return allSolutions.isEmpty() ? NO_SOLUTION : OK;
 
         } else { // single
             List<Position> solution;
@@ -282,7 +301,7 @@ public final class Main {
 
             if (solution.isEmpty()) {
                 System.out.printf("No solution found (%.3f ms).%n", (t1 - t0) / 1e6);
-                return;
+                return NO_SOLUTION;
             }
 
             System.out.printf("Solution found in %.3f ms.%n", (t1 - t0) / 1e6);
@@ -305,10 +324,12 @@ public final class Main {
                     System.out.println("Exported to " + txt + " and " + json);
                 } catch (IOException e) {
                     System.err.println("Failed to export: " + e.getMessage());
-                    return;
+                    return IO_ERROR;
                 }
             }
         }
+
+        return OK;
     }
 
     // ---- Helpers ----
@@ -328,6 +349,12 @@ public final class Main {
         System.out.println("  --fork-depth N  : parallel backtracking fork depth (default: 2)");
         System.out
                 .println("  --pool N        : create a custom ForkJoinPool with parallelism N (default: common pool)");
+        System.out.println();
+        System.out.println("Exit codes:");
+        System.out.println("  0 : a tour was found");
+        System.out.println("  1 : no tour exists for these settings");
+        System.out.println("  2 : the arguments are not valid");
+        System.out.println("  3 : a file could not be written");
     }
 
     /**

@@ -74,6 +74,26 @@ java -jar build/libs/knights-tour-pro-1.0.0-all.jar <rows> <cols> <startRow> <st
 
 Flags take either form: `--out results` or `--out=results`.
 
+### Exit codes
+
+| Code | Meaning |
+| ---- | ------- |
+| `0` | A tour was found |
+| `1` | No tour exists for these settings — the run was fine, the answer is simply "none" |
+| `2` | The arguments are not valid |
+| `3` | A file could not be written |
+
+A board with no tour is deliberately not an error, so a script can tell "there is no
+answer" from "something went wrong":
+
+```bash
+if java -jar build/libs/knights-tour-pro-1.0.0-all.jar 4 4 0 0 single open backtrack --no-print --no-export; then
+  echo "found one"
+elif [ $? -eq 1 ]; then
+  echo "no tour on a 4x4"
+fi
+```
+
 ### Examples
 
 ```bash
@@ -248,16 +268,14 @@ smaller board. In the interface, press Stop.
 ## Roadmap
 
 Done so far: the four strategies, open and closed tours, TXT and JSON exports, the JavaFX
-interface, JMH benchmarks, CI, a precomputed neighbour table, cancellable searches, and
-exporters that report a failed write instead of swallowing it.
+interface, JMH benchmarks, CI, a precomputed neighbour table, cancellable searches,
+exporters that report a failed write instead of swallowing it, and meaningful exit codes
+with tests covering the argument parsing.
 
 Still open:
 
 * Parallel enumeration of *all* tours with work stealing — today `all` mode is single-threaded.
 * More export formats: CSV, and an SVG drawing of the board.
-* Tests for the command-line parsing, which means lifting it out of `main()` first.
-* A non-zero exit code when the CLI fails — right now every error path returns 0, so a
-  script cannot tell a finished run from a broken one.
 * A web front end.
 
 ---
