@@ -135,7 +135,9 @@ public class MainFX extends Application {
                 task.cancel(true);
             }
 
-            boardView.clearMarks(); // stop timeline + clear trail
+            // Take the grid away, not just its marks: the placeholder sits behind the
+            // board and would otherwise show through the gaps between the squares.
+            boardView.clearBoard();
             placeholder.setVisible(true);
             controls.setAnimating(false); // disable Pause, reset label
             controls.setRunning(false); // enable Run

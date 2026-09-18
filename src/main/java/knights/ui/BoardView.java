@@ -111,6 +111,23 @@ public class BoardView extends GridPane {
     }
 
     /**
+     * Takes the grid away entirely, back to how things were before the first run.
+     *
+     * Clearing the marks is not enough on its own: the squares stay in place, and
+     * anything drawn behind the board shows through the gaps between them.
+     */
+    public void clearBoard() {
+        clearMarks(); // also stops the timeline
+        getChildren().clear();
+        getColumnConstraints().clear();
+        getRowConstraints().clear();
+        cells = null;
+        rows = 0;
+        cols = 0;
+        last = null;
+    }
+
+    /**
      * Plays the tour animation. Leaves numbers as a trail and shows a single
      * knight on the current cell (hiding it from the previous one).
      */
