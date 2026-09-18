@@ -248,14 +248,16 @@ smaller board. In the interface, press Stop.
 ## Roadmap
 
 Done so far: the four strategies, open and closed tours, TXT and JSON exports, the JavaFX
-interface, JMH benchmarks, CI, a precomputed neighbour table, and cancellable searches.
+interface, JMH benchmarks, CI, a precomputed neighbour table, cancellable searches, and
+exporters that report a failed write instead of swallowing it.
 
 Still open:
 
 * Parallel enumeration of *all* tours with work stealing — today `all` mode is single-threaded.
 * More export formats: CSV, and an SVG drawing of the board.
-* Exporters that report write failures instead of printing to the console and carrying on.
 * Tests for the command-line parsing, which means lifting it out of `main()` first.
+* A non-zero exit code when the CLI fails — right now every error path returns 0, so a
+  script cannot tell a finished run from a broken one.
 * A web front end.
 
 ---
