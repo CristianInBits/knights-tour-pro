@@ -264,6 +264,9 @@ Three suites in `src/jmh/java`:
 Measurements and what they mean:
 [benchmark report](docs/Knights%20Tour%20Pro%20-%20Benchmark%20Report%20%28JMH%29.md).
 
+For the theory behind the algorithms, how each one is implemented and what the measurements
+turned up, there is a [technical guide](docs/guia-tecnica.md) (in Spanish).
+
 > Each benchmark sets its own mode and iteration counts through annotations. Anything put in
 > the `jmh { }` block of `build.gradle.kts` applies to every class and silently overrides
 > them, so that block is deliberately left empty.
