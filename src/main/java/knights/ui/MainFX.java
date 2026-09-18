@@ -4,24 +4,6 @@ import knights.model.*;
 import knights.solver.*;
 import knights.export.*;
 
-import javafx.animation.*;
-import javafx.application.Application;
-import javafx.application.Platform;
-import javafx.beans.binding.Bindings;
-import javafx.geometry.Insets;
-import javafx.geometry.Pos;
-import javafx.scene.Scene;
-import javafx.scene.control.Label;
-import javafx.scene.layout.*;
-import javafx.scene.text.Text;
-import javafx.scene.text.TextFlow;
-import javafx.stage.Stage;
-
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicReference;
-
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
@@ -35,7 +17,12 @@ import javafx.stage.Stage;
 
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.*;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class MainFX extends Application {
@@ -52,8 +39,19 @@ public class MainFX extends Application {
                 return t;
             });
 
-    // Keep the running future to allow cancel (Stop)
-    private final AtomicReference<CompletableFuture<SolveResult>> running = new AtomicReference<>();
+    /**
+     * The search in progress, kept so Stop can cancel it. Submitted through the executor
+     * rather than wrapped in a CompletableFuture: only a plain Future interrupts the
+     * thread it runs on, and interrupting is what the solvers watch for.
+     */
+    private final AtomicReference<Future<?>> running = new AtomicReference<>();
+
+    /**
+     * Bumped by every Run and every Stop. A search carries the value it started with and
+     * its result is dropped if that no longer matches, so a search that finishes just as
+     * the user pressed Stop cannot redraw the board afterwards.
+     */
+    private final AtomicLong generation = new AtomicLong();
 
     @Override
     public void start(Stage stage) {
@@ -91,65 +89,38 @@ public class MainFX extends Application {
 
         // RUN: compute in background, then animate/export on FX thread
         controls.setOnRun(cfg -> {
+            final long startedAt = generation.incrementAndGet();
             controls.setRunning(true);
-            Platform.runLater(() -> boardView.initGrid(cfg.rows(), cfg.cols()));
+            boardView.initGrid(cfg.rows(), cfg.cols()); // already on the FX thread
 
-            CompletableFuture<SolveResult> fut = CompletableFuture.supplyAsync(() -> compute(cfg), computeExec);
-
-            running.set(fut);
-
-            fut.whenComplete((result, error) -> Platform.runLater(() -> {
-                // Ignore late/cancelled results
-                var current = running.get();
-                if (current == null || current.isCancelled() || current != fut)
-                    return;
-
+            Future<?> task = computeExec.submit(() -> {
+                SolveResult result = null;
+                Throwable error = null;
                 try {
-                    if (error != null) {
-                        controls.showMessage("Error: " + error.getMessage());
-                        System.out.println("[MainFX] compute error: " + error);
-                        return;
-                    }
-                    if (result == null || result.path().isEmpty()) {
-                        controls.showMessage("No solution found.");
-                        return;
-                    }
-
-                    boardView.clearMarks();
-
-                    // Enable Pause while animating; disable it when finished
-                    controls.setAnimating(true);
-                    boardView.setOnAnimationFinished(() -> controls.setAnimating(false));
-
-                    boardView.animate(result.path(), cfg.msPerStep());
-
-                    if (cfg.export()) {
-                        // Simple (sync) export; if files grow large, move to runAsync()
-                        ResultExporter txt = new TxtExporter();
-                        ResultExporter json = new JsonExporter();
-                        try {
-                            txt.exportSingle(result.path(), result.metadata(), cfg.exportDir() + "/tour.txt");
-                            json.exportSingle(result.path(), result.metadata(), cfg.exportDir() + "/tour.json");
-                            controls.showMessage("Exported to " + cfg.exportDir());
-                        } catch (Exception ex) {
-                            controls.showMessage("Export error: " + ex.getMessage());
-                            System.out.println("[MainFX] export error: " + ex);
-                        }
-                    } else {
-                        controls.showMessage("Done");
-                    }
-                } finally {
-                    controls.setRunning(false);
-                    running.set(null);
+                    result = compute(cfg);
+                } catch (CancellationException stopped) {
+                    return; // Stop already reset the UI; nothing left to report
+                } catch (Throwable t) {
+                    error = t;
                 }
-            }));
+                final SolveResult computed = result;
+                final Throwable failure = error;
+                Platform.runLater(() -> showResult(cfg, startedAt, computed, failure));
+            });
+
+            running.set(task);
         });
 
-        // STOP: cancel compute and stop/clear animation
+        // STOP: interrupt the search and stop/clear the animation
         controls.setOnStop(() -> {
-            var fut = running.getAndSet(null);
-            if (fut != null)
-                fut.cancel(true); // cooperative cancel; we ignore any late result
+            generation.incrementAndGet(); // disown whatever is still in flight
+
+            Future<?> task = running.getAndSet(null);
+            if (task != null) {
+                // Interrupts the compute thread; the solvers check for it and give up,
+                // so the work really stops instead of running on unseen.
+                task.cancel(true);
+            }
 
             boardView.clearMarks(); // stop timeline + clear trail
             controls.setAnimating(false); // disable Pause, reset label
@@ -163,6 +134,51 @@ public class MainFX extends Application {
         stage.setTitle("Knight's Tour Pro — JavaFX");
         stage.setScene(scene);
         stage.show();
+    }
+
+    /** Runs on the FX thread once a search finishes. */
+    private void showResult(ControlsPane.RunConfig cfg, long startedAt, SolveResult result, Throwable error) {
+        if (generation.get() != startedAt) {
+            return; // superseded by a later Run, or called off by Stop
+        }
+        try {
+            if (error != null) {
+                controls.showMessage("Error: " + error.getMessage());
+                System.out.println("[MainFX] compute error: " + error);
+                return;
+            }
+            if (result == null || result.path().isEmpty()) {
+                controls.showMessage("No solution found.");
+                return;
+            }
+
+            boardView.clearMarks();
+
+            // Enable Pause while animating; disable it when finished
+            controls.setAnimating(true);
+            boardView.setOnAnimationFinished(() -> controls.setAnimating(false));
+
+            boardView.animate(result.path(), cfg.msPerStep());
+
+            if (cfg.export()) {
+                // Simple (sync) export; if files grow large, move to a background task
+                ResultExporter txt = new TxtExporter();
+                ResultExporter json = new JsonExporter();
+                try {
+                    txt.exportSingle(result.path(), result.metadata(), cfg.exportDir() + "/tour.txt");
+                    json.exportSingle(result.path(), result.metadata(), cfg.exportDir() + "/tour.json");
+                    controls.showMessage("Exported to " + cfg.exportDir());
+                } catch (Exception ex) {
+                    controls.showMessage("Export error: " + ex.getMessage());
+                    System.out.println("[MainFX] export error: " + ex);
+                }
+            } else {
+                controls.showMessage("Done");
+            }
+        } finally {
+            controls.setRunning(false);
+            running.set(null);
+        }
     }
 
     private SolveResult compute(ControlsPane.RunConfig cfg) {
@@ -194,7 +210,9 @@ public class MainFX extends Application {
                                         board, start, closed, cfg.forkDepth(), pool).solve();
                                 return new SolveResult(path, cfg.metadata("single"));
                             } finally {
-                                pool.shutdown();
+                                // shutdownNow, not shutdown: on cancellation the workers have
+                                // already been told to unwind and nothing should outlive this.
+                                pool.shutdownNow();
                             }
                         } else {
                             solver = new ParallelBacktrackingSolver(board, start, closed, cfg.forkDepth());
@@ -205,6 +223,10 @@ public class MainFX extends Application {
                 List<Position> path = solver.solve();
                 return new SolveResult(path, cfg.metadata("single"));
             }
+        } catch (CancellationException stopped) {
+            // Stop was pressed. Let it through: turning it into a result here would make
+            // a cancelled search look like a board with no solution.
+            throw stopped;
         } catch (Exception e) {
             System.out.println("[MainFX] compute exception: " + e);
             return new SolveResult(List.of(), Map.of("error", e.getMessage()));

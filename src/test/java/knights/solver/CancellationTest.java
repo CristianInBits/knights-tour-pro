@@ -162,6 +162,47 @@ class CancellationTest {
     }
 
     @Test
+    @Timeout(60)
+    void repeatedCancellationsDoNotExhaustAFixedPool() throws Exception {
+        // This is the failure the GUI actually showed. It runs searches on a small fixed
+        // pool, and a Stop used to leave the search running for ever on its thread. After
+        // as many Stops as there were threads, nothing could start again and the window
+        // stopped responding. Cancel the same number of searches the pool has threads,
+        // twice over, then check the pool can still do work.
+        final int threads = 2;
+        ExecutorService pool = Executors.newFixedThreadPool(threads);
+        try {
+            for (int i = 0; i < threads * 2; i++) {
+                CountDownLatch started = new CountDownLatch(1);
+                CountDownLatch finished = new CountDownLatch(1);
+
+                Future<?> search = pool.submit(() -> {
+                    started.countDown();
+                    try {
+                        new BacktrackingSolver(new Board(8, 8), new Position(0, 0), true).solve();
+                    } catch (CancellationException expected) {
+                        // The point of the test is that we get here at all.
+                    } finally {
+                        finished.countDown();
+                    }
+                });
+
+                assertTrue(started.await(5, TimeUnit.SECONDS), "search " + i + " never started");
+                Thread.sleep(100);
+                search.cancel(true);
+                assertTrue(finished.await(UNWIND_TIMEOUT_SECONDS, TimeUnit.SECONDS),
+                        "search " + i + " never released its thread");
+            }
+
+            Future<String> canary = pool.submit(() -> "alive");
+            assertEquals("alive", canary.get(5, TimeUnit.SECONDS),
+                    "the pool had no usable thread left after " + (threads * 2) + " cancellations");
+        } finally {
+            pool.shutdownNow();
+        }
+    }
+
+    @Test
     @Timeout(20)
     void anUninterruptedSearchIsUnaffected() throws Exception {
         // The checks must not fire on their own.
