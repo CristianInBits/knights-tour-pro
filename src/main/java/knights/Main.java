@@ -58,7 +58,17 @@ public final class Main {
 
         modeRaw = args[4];
         tourTypeRaw = args[5];
-        strategyRaw = (args.length >= 7) ? args[6] : "backtrack";
+
+        // 'strategy' is optional. When the 7th argument already looks like a flag, keep the
+        // default strategy and start reading flags there instead of swallowing one.
+        final int firstFlag;
+        if (args.length >= 7 && !args[6].startsWith("--")) {
+            strategyRaw = args[6];
+            firstFlag = 7;
+        } else {
+            strategyRaw = "backtrack";
+            firstFlag = 6;
+        }
 
         final boolean isClosed = "closed".equalsIgnoreCase(tourTypeRaw);
         final String mode = modeRaw.toLowerCase(Locale.ROOT);
@@ -74,80 +84,70 @@ public final class Main {
         int forkDepth = 2; // sensible default for parallel
         Integer poolParallelism = null; // null => use common pool
 
-        if (args.length > 7) {
-            for (int i = 7; i < args.length; i++) {
-                String a = args[i];
-                if (a == null)
-                    continue;
-                a = a.trim();
-                if (a.isEmpty())
-                    continue;
+        for (int i = firstFlag; i < args.length; i++) {
+            String token = (args[i] == null) ? "" : args[i].trim();
+            if (token.isEmpty())
+                continue;
 
-                if (a.startsWith("--limit")) {
-                    String val = readFlagValue(a, (i + 1 < args.length) ? args[i + 1] : null);
-                    if (val == null) {
-                        System.err.println("Missing value for --limit");
-                        return;
+            // Accept both "--name=value" and "--name value". The name is compared in full,
+            // so a typo such as "--outrageous" is rejected instead of passing for "--out".
+            String name = token;
+            String value = null;
+            int eq = token.indexOf('=');
+            if (eq >= 0) {
+                name = token.substring(0, eq);
+                value = token.substring(eq + 1);
+            }
+            name = name.toLowerCase(Locale.ROOT);
+
+            final boolean takesValue;
+            if (name.equals("--no-print") || name.equals("--no-export")) {
+                takesValue = false;
+            } else if (name.equals("--limit") || name.equals("--out")
+                    || name.equals("--fork-depth") || name.equals("--pool")) {
+                takesValue = true;
+            } else {
+                System.err.println("Unknown flag: " + token);
+                printUsage();
+                return;
+            }
+
+            if (takesValue && value == null) {
+                if (i + 1 >= args.length || args[i + 1].startsWith("--")) {
+                    System.err.println("Missing value for " + name);
+                    return;
+                }
+                value = args[++i];
+            } else if (!takesValue && value != null) {
+                System.err.println(name + " does not take a value.");
+                return;
+            }
+
+            try {
+                switch (name) {
+                    case "--no-print" -> printBoards = false;
+                    case "--no-export" -> doExport = false;
+                    case "--limit" -> limitToPrint = Math.max(0, Integer.parseInt(value));
+                    case "--fork-depth" -> forkDepth = Math.max(0, Integer.parseInt(value));
+                    case "--out" -> {
+                        if (value.isBlank()) {
+                            System.err.println("Missing value for --out");
+                            return;
+                        }
+                        outDir = value;
                     }
-                    try {
-                        limitToPrint = Math.max(0, Integer.parseInt(val));
-                        if (!a.contains("="))
-                            i++;
-                    } catch (NumberFormatException nfe) {
-                        System.err.println("Invalid --limit value: " + val);
-                        return;
-                    }
-                } else if (a.startsWith("--out")) {
-                    String val = readFlagValue(a, (i + 1 < args.length) ? args[i + 1] : null);
-                    if (val == null || val.isBlank()) {
-                        System.err.println("Missing value for --out");
-                        return;
-                    }
-                    outDir = val;
-                    if (!a.contains("="))
-                        i++;
-                } else if ("--no-print".equalsIgnoreCase(a)) {
-                    printBoards = false;
-                } else if ("--no-export".equalsIgnoreCase(a)) {
-                    doExport = false;
-                } else if (a.startsWith("--fork-depth")) {
-                    String val = readFlagValue(a, (i + 1 < args.length) ? args[i + 1] : null);
-                    if (val == null) {
-                        System.err.println("Missing value for --fork-depth");
-                        return;
-                    }
-                    try {
-                        forkDepth = Math.max(0, Integer.parseInt(val));
-                        if (!a.contains("="))
-                            i++;
-                    } catch (NumberFormatException nfe) {
-                        System.err.println("Invalid --fork-depth value: " + val);
-                        return;
-                    }
-                } else if (a.startsWith("--pool")) {
-                    String val = readFlagValue(a, (i + 1 < args.length) ? args[i + 1] : null);
-                    if (val == null) {
-                        System.err.println("Missing value for --pool");
-                        return;
-                    }
-                    try {
-                        int p = Integer.parseInt(val);
+                    case "--pool" -> {
+                        int p = Integer.parseInt(value);
                         if (p <= 0) {
                             System.err.println("--pool must be > 0");
                             return;
                         }
                         poolParallelism = p;
-                        if (!a.contains("="))
-                            i++;
-                    } catch (NumberFormatException nfe) {
-                        System.err.println("Invalid --pool value: " + val);
-                        return;
                     }
-                } else {
-                    System.err.println("Unknown flag: " + a);
-                    printUsage();
-                    return;
                 }
+            } catch (NumberFormatException nfe) {
+                System.err.println("Invalid " + name + " value: " + value);
+                return;
             }
         }
 
@@ -315,16 +315,6 @@ public final class Main {
         System.out.println("  --fork-depth N  : parallel backtracking fork depth (default: 2)");
         System.out
                 .println("  --pool N        : create a custom ForkJoinPool with parallelism N (default: common pool)");
-    }
-
-    private static String readFlagValue(String flagToken, String nextToken) {
-        // Accept both "--name=value" and "--name value"
-        if (flagToken.contains("=")) {
-            return flagToken.substring(flagToken.indexOf('=') + 1);
-        } else if (nextToken != null && !nextToken.startsWith("--")) {
-            return nextToken;
-        }
-        return null;
     }
 
     /**
