@@ -3,9 +3,9 @@ import org.gradle.jvm.toolchain.JavaLanguageVersion
 plugins {
     java
     application
-    id("me.champeau.jmh") version "0.7.2"
-    id("com.github.johnrengelman.shadow") version "8.1.1"
-    id("org.openjfx.javafxplugin") version "0.0.13"
+    id("me.champeau.jmh") version "0.7.3"
+    id("com.gradleup.shadow") version "9.6.1"
+    id("org.openjfx.javafxplugin") version "0.1.0"
 }
 
 group = "knights"
@@ -32,6 +32,8 @@ dependencies {
     // Tests (JUnit 5 BOM keeps versions aligned)
     testImplementation(platform("org.junit:junit-bom:5.10.2"))
     testImplementation("org.junit.jupiter:junit-jupiter")
+    // Gradle 9 no longer adds the launcher implicitly; the BOM above pins its version.
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
     // JMH (benchmarks in src/jmh/java/**)
     jmh("org.openjdk.jmh:jmh-core:1.37")
