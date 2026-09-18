@@ -184,10 +184,12 @@ public class MainFX extends Application {
                 ResultExporter txt = new TxtExporter();
                 ResultExporter json = new JsonExporter();
                 ResultExporter svg = new SvgExporter();
+                ResultExporter csv = new CsvExporter();
                 try {
                     txt.exportSingle(result.path(), result.metadata(), cfg.exportDir() + "/tour.txt");
                     json.exportSingle(result.path(), result.metadata(), cfg.exportDir() + "/tour.json");
                     svg.exportSingle(result.path(), result.metadata(), cfg.exportDir() + "/tour.svg");
+                    csv.exportSingle(result.path(), result.metadata(), cfg.exportDir() + "/tour.csv");
                     controls.showMessage("Exported to " + cfg.exportDir());
                 } catch (IOException ex) {
                     // Reaching the user matters more than the tour itself being fine:

@@ -2,6 +2,7 @@ package knights;
 
 import knights.export.JsonExporter;
 import knights.export.ResultExporter;
+import knights.export.CsvExporter;
 import knights.export.SvgExporter;
 import knights.export.TxtExporter;
 import knights.model.Board;
@@ -216,6 +217,7 @@ public final class Main {
         ResultExporter txtExporter = new TxtExporter();
         ResultExporter jsonExporter = new JsonExporter();
         ResultExporter svgExporter = new SvgExporter();
+        ResultExporter csvExporter = new CsvExporter();
 
         // Ensure output directory exists (only if exporting)
         Path outBase = Paths.get(outDir);
@@ -261,10 +263,12 @@ public final class Main {
                 Path txt = outBase.resolve("tours.txt");
                 Path json = outBase.resolve("tours.json");
                 Path svg = outBase.resolve("tours.svg");
+                Path csv = outBase.resolve("tours.csv");
                 try {
                     txtExporter.exportMultiple(allSolutions, metadata, txt.toString());
                     jsonExporter.exportMultiple(allSolutions, metadata, json.toString());
                     svgExporter.exportMultiple(allSolutions, metadata, svg.toString());
+                    csvExporter.exportMultiple(allSolutions, metadata, csv.toString());
                     System.out.println("Exported to " + outBase);
                 } catch (IOException e) {
                     System.err.println("Failed to export: " + e.getMessage());
@@ -323,10 +327,12 @@ public final class Main {
                 Path txt = outBase.resolve("tour.txt");
                 Path json = outBase.resolve("tour.json");
                 Path svg = outBase.resolve("tour.svg");
+                Path csv = outBase.resolve("tour.csv");
                 try {
                     txtExporter.exportSingle(solution, metadata, txt.toString());
                     jsonExporter.exportSingle(solution, metadata, json.toString());
                     svgExporter.exportSingle(solution, metadata, svg.toString());
+                    csvExporter.exportSingle(solution, metadata, csv.toString());
                     System.out.println("Exported to " + outBase);
                 } catch (IOException e) {
                     System.err.println("Failed to export: " + e.getMessage());
