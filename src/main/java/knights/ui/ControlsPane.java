@@ -65,6 +65,8 @@ public class ControlsPane extends VBox {
     private Runnable onStop;
 
     private boolean paused = false;
+    private boolean searching = false;
+    private boolean animating = false;
 
     public ControlsPane() {
         getStyleClass().add("sidebar");
@@ -373,27 +375,44 @@ public class ControlsPane extends VBox {
         String lower = msg.toLowerCase(Locale.ROOT);
         if (lower.startsWith("error") || lower.contains("no solution")) {
             statusDot.getStyleClass().add("error");
-        } else if (lower.startsWith("running")) {
+        } else if (lower.startsWith("searching") || lower.startsWith("running")) {
             statusDot.getStyleClass().add("running");
         } else if (lower.startsWith("done") || lower.startsWith("exported")) {
             statusDot.getStyleClass().add("done");
         }
     }
 
-    /** Enables/disables Run and updates the status line. */
+    /**
+     * Enables/disables Run. Only announces the start of a search: when one ends, the
+     * caller says how it went, and overwriting that here would wipe the outcome the
+     * moment it was reported.
+     */
     public void setRunning(boolean running) {
+        searching = running;
         btnRun.setDisable(running);
-        btnStop.setDisable(!running);
-        showMessage(running ? "Running…" : "Ready");
+        updateStopButton();
+        if (running) {
+            showMessage("Searching…");
+        }
     }
 
     /** Enables/disables Pause; resets its label when disabling. */
     public void setAnimating(boolean animating) {
+        this.animating = animating;
         btnPause.setDisable(!animating);
         if (!animating) {
             paused = false;
             btnPause.setText("Pause");
         }
+        updateStopButton();
+    }
+
+    /**
+     * Stop applies to a search and to the animation that follows it, so it stays enabled
+     * while either is going: a long animation was previously impossible to call off.
+     */
+    private void updateStopButton() {
+        btnStop.setDisable(!searching && !animating);
     }
 
     public void setPaused(boolean paused) {

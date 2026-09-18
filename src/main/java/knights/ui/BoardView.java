@@ -13,6 +13,7 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
+import javafx.scene.shape.StrokeType;
 import javafx.scene.text.Font;
 import javafx.scene.text.Text;
 import javafx.util.Duration;
@@ -134,6 +135,9 @@ public class BoardView extends GridPane {
 
                 // 1) Leave a trail: colour by progress + write step number
                 cell.mark(index + 1, progress);
+                if (index == 0) {
+                    cell.markAsStart();
+                }
 
                 // 2) Move the knight: hide the old one, show the new one
                 if (last != null)
@@ -182,6 +186,9 @@ public class BoardView extends GridPane {
         final StackPane root = new StackPane();
         final Rectangle rect = new Rectangle();
 
+        /** Ring drawn on the square the knight is standing on, so it is easy to follow. */
+        final Rectangle focusRing = new Rectangle();
+
         // The knight sits in the middle of the square and the step number in a corner,
         // so neither has to give up room for the other.
         final ImageView knightView; // may be null if no image
@@ -220,6 +227,17 @@ public class BoardView extends GridPane {
                 knightGlyph = new Text("♞");
             }
 
+            focusRing.widthProperty().bind(root.widthProperty().subtract(5));
+            focusRing.heightProperty().bind(root.heightProperty().subtract(5));
+            focusRing.setArcWidth(8);
+            focusRing.setArcHeight(8);
+            focusRing.setFill(Color.TRANSPARENT);
+            focusRing.setStroke(Color.web("#ffffff"));
+            focusRing.setStrokeWidth(2.5);
+            focusRing.setStrokeType(StrokeType.INSIDE);
+            focusRing.setVisible(false);
+            focusRing.setMouseTransparent(true);
+
             Node knight = (knightView != null) ? knightView : knightGlyph;
 
             stepText.setFill(Color.WHITE);
@@ -232,7 +250,7 @@ public class BoardView extends GridPane {
             // At start, knight is hidden (it appears only on the current cell)
             showKnight(false);
 
-            root.getChildren().addAll(rect, knight, stepText);
+            root.getChildren().addAll(rect, focusRing, knight, stepText);
         }
 
         /** Adjust fonts (and glyph color for contrast on base background). */
@@ -270,17 +288,30 @@ public class BoardView extends GridPane {
             return Color.web("#6366f1").interpolate(Color.web("#22d3ee"), t);
         }
 
-        /** Shows/hides the knight (image or glyph). */
+        /** Shows/hides the knight (image or glyph) and the ring around it. */
         void showKnight(boolean visible) {
             if (knightView != null)
                 knightView.setVisible(visible);
             if (knightGlyph != null)
                 knightGlyph.setVisible(visible);
+            focusRing.setVisible(visible);
+        }
+
+        /**
+         * Outlines the square the tour starts from. It stays for the whole run, so a
+         * finished board still shows where the knight set off — otherwise the only clue
+         * is a small "1" in a corner.
+         */
+        void markAsStart() {
+            rect.setStroke(Color.web("#e8ebf2", 0.6));
+            rect.setStrokeWidth(2);
+            rect.setStrokeType(StrokeType.INSIDE);
         }
 
         /** Restores base state. */
         void reset() {
             rect.setFill(base);
+            rect.setStroke(null);
             stepText.setText("");
             showKnight(false);
         }

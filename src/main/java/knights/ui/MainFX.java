@@ -136,8 +136,9 @@ public class MainFX extends Application {
             }
 
             boardView.clearMarks(); // stop timeline + clear trail
+            placeholder.setVisible(true);
             controls.setAnimating(false); // disable Pause, reset label
-            controls.setRunning(false); // enable Run, disable Stop
+            controls.setRunning(false); // enable Run
             controls.showMessage("Stopped");
         });
 
