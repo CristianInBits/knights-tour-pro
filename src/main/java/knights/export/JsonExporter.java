@@ -26,23 +26,20 @@ import java.util.Map;
 public class JsonExporter implements ResultExporter {
 
     @Override
-    public void exportSingle(List<Position> path, Map<String, Object> metadata, String filePath) {
+    public void exportSingle(List<Position> path, Map<String, Object> metadata, String filePath) throws IOException {
         exportMultiple(path == null ? List.of() : List.of(path), metadata, filePath);
     }
 
     @Override
-    public void exportMultiple(List<List<Position>> paths, Map<String, Object> metadata, String filePath) {
+    public void exportMultiple(List<List<Position>> paths, Map<String, Object> metadata, String filePath)
+            throws IOException {
         List<List<Position>> tours = (paths == null) ? List.of() : paths;
         Map<String, Object> meta = (metadata == null) ? Map.of() : metadata;
 
         Path target = Paths.get(filePath);
         Path parent = target.getParent();
-        try {
-            if (parent != null)
-                Files.createDirectories(parent);
-        } catch (IOException e) {
-            System.err.println("Failed to create directories for: " + target + " -> " + e.getMessage());
-            return;
+        if (parent != null) {
+            Files.createDirectories(parent);
         }
 
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
@@ -75,11 +72,6 @@ public class JsonExporter implements ResultExporter {
             jw.endArray();
 
             jw.endObject();
-
-            System.out.println("Tours successfully exported to " + target);
-
-        } catch (IOException e) {
-            System.err.println("Failed to export JSON to " + target + ": " + e.getMessage());
         }
     }
 }

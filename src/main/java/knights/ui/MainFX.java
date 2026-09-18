@@ -16,6 +16,7 @@ import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CancellationException;
@@ -186,9 +187,11 @@ public class MainFX extends Application {
                     txt.exportSingle(result.path(), result.metadata(), cfg.exportDir() + "/tour.txt");
                     json.exportSingle(result.path(), result.metadata(), cfg.exportDir() + "/tour.json");
                     controls.showMessage("Exported to " + cfg.exportDir());
-                } catch (Exception ex) {
-                    controls.showMessage("Export error: " + ex.getMessage());
-                    System.out.println("[MainFX] export error: " + ex);
+                } catch (IOException ex) {
+                    // Reaching the user matters more than the tour itself being fine:
+                    // silently skipping the files is how you lose a long run's results.
+                    controls.showMessage("Export failed: " + ex.getMessage());
+                    System.err.println("[MainFX] export error: " + ex);
                 }
             } else {
                 controls.showMessage("Done");

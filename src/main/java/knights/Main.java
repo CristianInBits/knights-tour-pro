@@ -7,6 +7,7 @@ import knights.model.Board;
 import knights.model.Position;
 import knights.solver.*;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -240,8 +241,14 @@ public final class Main {
             if (doExport) {
                 Path txt = outBase.resolve("tours.txt");
                 Path json = outBase.resolve("tours.json");
-                txtExporter.exportMultiple(allSolutions, metadata, txt.toString());
-                jsonExporter.exportMultiple(allSolutions, metadata, json.toString());
+                try {
+                    txtExporter.exportMultiple(allSolutions, metadata, txt.toString());
+                    jsonExporter.exportMultiple(allSolutions, metadata, json.toString());
+                    System.out.println("Exported to " + txt + " and " + json);
+                } catch (IOException e) {
+                    System.err.println("Failed to export: " + e.getMessage());
+                    return;
+                }
             }
 
         } else { // single
@@ -292,8 +299,14 @@ public final class Main {
             if (doExport) {
                 Path txt = outBase.resolve("tour.txt");
                 Path json = outBase.resolve("tour.json");
-                txtExporter.exportSingle(solution, metadata, txt.toString());
-                jsonExporter.exportSingle(solution, metadata, json.toString());
+                try {
+                    txtExporter.exportSingle(solution, metadata, txt.toString());
+                    jsonExporter.exportSingle(solution, metadata, json.toString());
+                    System.out.println("Exported to " + txt + " and " + json);
+                } catch (IOException e) {
+                    System.err.println("Failed to export: " + e.getMessage());
+                    return;
+                }
             }
         }
     }

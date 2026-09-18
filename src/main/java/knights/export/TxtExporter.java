@@ -19,13 +19,14 @@ import java.util.*;
 public class TxtExporter implements ResultExporter {
 
     @Override
-    public void exportSingle(List<Position> path, Map<String, Object> metadata, String filePath) {
+    public void exportSingle(List<Position> path, Map<String, Object> metadata, String filePath) throws IOException {
         // Delegate to exportMultiple with a singleton list (null-safe).
         exportMultiple(path == null ? List.of() : List.of(path), metadata, filePath);
     }
 
     @Override
-    public void exportMultiple(List<List<Position>> allPaths, Map<String, Object> metadata, String filePath) {
+    public void exportMultiple(List<List<Position>> allPaths, Map<String, Object> metadata, String filePath)
+            throws IOException {
         // Null-safety
         List<List<Position>> tours = (allPaths == null) ? List.of() : allPaths;
         Map<String, Object> meta = (metadata == null) ? Map.of() : metadata;
@@ -33,12 +34,8 @@ public class TxtExporter implements ResultExporter {
         Path target = Paths.get(filePath);
         // Create parent directories if needed
         Path parent = target.getParent();
-        try {
-            if (parent != null)
-                Files.createDirectories(parent);
-        } catch (IOException e) {
-            System.err.println("Failed to create directories for: " + target + " -> " + e.getMessage());
-            return;
+        if (parent != null) {
+            Files.createDirectories(parent);
         }
 
         // Use UTF-8 and truncate existing files
@@ -78,12 +75,6 @@ public class TxtExporter implements ResultExporter {
                 writer.write(nl);
             }
 
-            // Library code shouldn't print to stdout normally; keeping minimal message for
-            // continuity
-            System.out.println("Tours successfully exported to " + target);
-
-        } catch (IOException e) {
-            System.err.println("Failed to export TXT to " + target + ": " + e.getMessage());
         }
     }
 }
