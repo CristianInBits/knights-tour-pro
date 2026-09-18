@@ -387,12 +387,76 @@ Medido: **sin coste apreciable** en el rendimiento.
 | SVG | verlo dibujado; el trazo degrada de índigo a cian según avanza |
 | CSV | cargarlo en una hoja de cálculo; una fila por movimiento |
 
-Cada ejecución escribe en **su propia carpeta**, nombrada con la fecha y hora de inicio:
-`output/2026-09-18_234327/`. Antes los ficheros iban a nombres fijos, así que una segunda
-ejecución borraba la anterior sin avisar. La carpeta se crea con `Files.createDirectory`,
-que falla si el nombre ya existe, de modo que comprobar y reservar el nombre ocurren en un
-solo paso: dos ejecuciones en el mismo segundo —o dos procesos a la vez— reciben carpetas
-distintas en lugar de pisarse.
+### Una carpeta por ejecución
+
+Los cuatro exportadores abrían el fichero con `TRUNCATE_EXISTING`, que vacía lo que hubiera
+antes. Como los nombres eran fijos —`tour.txt`, `tour.json`…—, ejecutar el programa dos
+veces contra la misma carpeta **borraba el primer resultado sin avisar**.
+
+Ahora cada ejecución escribe en su propia carpeta, nombrada con la fecha y hora de inicio:
+
+```text
+output/
+├── 2026-09-18_234327/     tour.txt  tour.json  tour.svg  tour.csv
+├── 2026-09-18_234327_2/
+└── 2026-09-19_101502/
+```
+
+**Por qué una carpeta y no un sufijo en el nombre.** Con cuatro formatos por ejecución, la
+alternativa —`tour-2.txt`, `tour-2.json`, `tour-3.txt`…— deja los ficheros de varias
+ejecuciones entremezclados en el mismo directorio. La carpeta mantiene junto lo que va
+junto. Y el formato `yyyy-MM-dd_HHmmss` hace que ordenar por nombre sea ordenar por fecha,
+que es la razón de poner el año primero.
+
+#### El problema de comprobar y luego actuar
+
+La marca de tiempo solo llega al segundo, así que dos ejecuciones seguidas chocan con
+facilidad. No es un caso raro de laboratorio: al probarlo, **tres ejecuciones consecutivas
+cayeron en el mismo segundo**.
+
+La forma natural de resolverlo es la que no funciona:
+
+```java
+// MAL: entre la comprobación y la creación cabe otro proceso
+if (!Files.exists(candidata)) {
+    Files.createDirectory(candidata);   // ...y aquí ya puede existir
+}
+```
+
+Es el patrón **TOCTOU** (*time of check to time of use*, "del momento de comprobar al de
+usar"): entre que preguntas si algo está libre y lo reservas, hay una ventana en la que
+otro puede habérselo llevado. En un fichero de resultados el fallo es silencioso: dos
+ejecuciones creen tener la carpeta y una machaca a la otra.
+
+La solución es no separar las dos operaciones:
+
+```java
+try {
+    return Files.createDirectory(candidata);   // falla si el nombre está ocupado
+} catch (FileAlreadyExistsException ocupado) {
+    // probar el siguiente nombre
+}
+```
+
+`Files.createDirectory` **crea la carpeta o falla**, en un solo paso indivisible que
+resuelve el sistema de ficheros. No hay ventana. Si falla, se prueba `_2`, `_3`, y así
+sucesivamente. El principio general es el que conviene recordar: **cuando algo tenga que
+ser exclusivo, pide la operación atómica que ya existe en vez de componerla tú a base de
+comprobaciones**.
+
+Es el mismo razonamiento que aparece en `compareAndSet` sobre la bandera compartida de los
+solvers paralelos: comprobar y escribir en una sola operación en lugar de leer, decidir y
+escribir por separado.
+
+**Cómo se comprobó**: un test lanza 16 peticiones simultáneas desde 8 hilos, todas con la
+misma marca de tiempo, y verifica que salen 16 carpetas distintas. Otro deja un resultado
+anterior en una carpeta con ese nombre exacto y comprueba que la nueva ejecución ni lo
+toca ni lo reutiliza.
+
+**Un efecto secundario agradable**: al ser la carpeta siempre nueva y vacía, desapareció
+toda una clase de fallos de escritura. Uno de los tests existentes provocaba un error
+poniendo un directorio donde debía ir `tour.txt`; con este cambio esa situación ya no puede
+darse, y el test se sustituyó por el que comprueba que dos ejecuciones conviven.
 
 ### Códigos de salida
 
@@ -461,6 +525,11 @@ trabajo. Perseguir esa contradicción es lo que reveló el mecanismo verdadero.
 **La misma técnica no siempre hace lo mismo.** El paralelismo es diversificación cuando
 buscas un resultado y hay salida temprana, y reparto de trabajo cuando los tienes que
 encontrar todos. Mismo código, ganancias de naturaleza distinta.
+
+**Comprobar y luego actuar no es lo mismo que actuar.** Preguntar si un nombre está libre y
+después reservarlo deja una ventana entre ambas cosas. Cuando el sistema ofrece una
+operación que hace las dos a la vez —crear la carpeta o fallar—, esa es la que hay que
+usar.
 
 ---
 
