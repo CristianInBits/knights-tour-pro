@@ -90,13 +90,41 @@ much better. Tighten it at the cost of a longer run:
 
 Every other cell has an error under 8% of its value.
 
+## Enumerating every tour
+
+Finding one tour and finding all of them are different problems, and they behave
+differently under threads. A single-tour search can stop the moment an answer appears, so
+what the threads really buy is a chance of stumbling onto a good branch. Enumeration has no
+early exit: every branch is walked whatever happens, so the threads divide a fixed amount of
+work and the gain is bounded by the core count.
+
+`AllSolutionsBenchmark`, 5×6 open from the corner, which has 4542 tours:
+
+| Strategy | Time |
+| -------- | ---: |
+| `backtrack` (sequential) | 2513 ± 344 ms |
+| `parallel`, forkDepth 3 | 707 ± 287 ms |
+
+That is about **3.5× on 12 cores**. Both error bars are wide — the parallel figure's is 40%
+of its value — so treat this as "a few times faster", not as a precise ratio. Repeated
+measurement outside JMH, taking the best of several runs, put it nearer 4.4×.
+
+Why not 12×? The branches are nowhere near equal — some opening moves lead to far more
+tours than others — and every forked task copies the board's marks. `forkDepth` 2 to 3 is
+where it settles; 1 barely splits the work at all, and going deeper adds tasks without
+adding parallelism.
+
+The parallel enumeration returns the same tours in the same order as the sequential one,
+which is what makes the two interchangeable.
+
 ## Practical guidance
 
 * **Open tours** — use `warnsdorff`. It is the fastest option by a wide margin and it does not
   need a thread pool. Do not reach for `parallel` here; it only adds overhead.
 * **Closed tours** — use `parallel`. Plain `warnsdorff` frequently fails outright (it returns no
   tour when its greedy path dead-ends), and the sequential search behind it is far too slow.
-* **Enumerating every tour** — only `backtrack` supports `all` mode; see `AllSolutionsBenchmark`.
+* **Enumerating every tour** — `backtrack` or `parallel`; the parallel one is a few times
+  faster and returns the tours in the same order. `warnsdorff` cannot enumerate at all.
 * `forkDepth` matters far more than pool size. Depth 0 disables forking entirely; 2 to 4 is
   where the closed-tour case becomes tractable.
 

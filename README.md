@@ -30,7 +30,7 @@ it to `output/`. Or skip the packaging and use the graphical interface:
 | -------- | ------------ | ---------- |
 | `warnsdorff` | Always steps to the square with the fewest onward moves | **Open tours.** Far and away the fastest, and it scales to large boards |
 | `backtrack` | Tries every move in board order, backing up at dead ends | Enumerating **every** tour, and small boards where it is fast enough |
-| `parallel` | Warnsdorff's ordering, exploring several branches at once | **Closed tours**, where a single-threaded search gets stuck for a long time |
+| `parallel` | Several branches explored at once | **Closed tours**, and enumerating every tour in `all` mode |
 
 Two things are worth knowing before you pick:
 
@@ -44,8 +44,13 @@ at once, so a promising-looking branch that turns out to be a trap no longer cos
 whole search. The [benchmark report](docs/Knights%20Tour%20Pro%20-%20Benchmark%20Report%20%28JMH%29.md)
 has the measurements.
 
-`all` mode — enumerating every tour — only works with `backtrack`. The number of tours grows
-explosively, so keep the board small: a 5×5 from a corner already has 304 of them.
+`all` mode — enumerating every tour — works with `backtrack` and `parallel`, not with
+`warnsdorff`, which never backtracks and so cannot enumerate anything. Enumeration is where
+threads help most predictably: there is no early exit, so they divide a fixed amount of work
+instead of racing for the first answer. Measured at roughly **3.5× on 12 cores**.
+
+The number of tours grows explosively, so keep the board small: a 5×5 from a corner already
+has 304 of them, and a 5×6 has 4542.
 
 ---
 
@@ -249,7 +254,7 @@ Three suites in `src/jmh/java`:
 * **`ParallelVsSequentialBenchmark`** — separates the two things that make the parallel
   solver fast, the move ordering and the threads, since they help in opposite situations.
 * **`SingleTourBenchmark`** — every strategy across board sizes and starting squares.
-* **`AllSolutionsBenchmark`** — the cost of enumerating everything.
+* **`AllSolutionsBenchmark`** — enumerating everything, sequential against parallel.
 
 ```bash
 ./gradlew jmh
@@ -288,11 +293,11 @@ smaller board. In the interface, press Stop.
 Done so far: the four strategies, open and closed tours, TXT and JSON exports, the JavaFX
 interface, JMH benchmarks, CI, a precomputed neighbour table, cancellable searches,
 exporters that report a failed write instead of swallowing it, SVG drawings and CSV tables
-of the tours, and meaningful exit codes with tests covering the argument parsing.
+of the tours, parallel enumeration of every tour, and meaningful exit codes with tests
+covering the argument parsing.
 
 Still open:
 
-* Parallel enumeration of *all* tours with work stealing — today `all` mode is single-threaded.
 * A web front end.
 
 ---

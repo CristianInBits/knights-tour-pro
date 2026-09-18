@@ -215,6 +215,7 @@ public class MainFX extends Application {
             if (cfg.mode().equalsIgnoreCase("all")) {
                 AllToursSolver allSolver = switch (cfg.strategy().toLowerCase()) {
                     case "backtrack" -> new BacktrackingAllSolutionsSolver(board, start, closed);
+                    case "parallel" -> new ParallelAllToursSolver(board, start, closed, cfg.forkDepth());
                     default -> null;
                 };
                 if (allSolver == null)

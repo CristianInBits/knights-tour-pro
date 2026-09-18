@@ -234,14 +234,26 @@ public final class Main {
         long t0 = System.nanoTime();
         if (mode.equals("all")) {
             // 'all' requires a solver that can enumerate all solutions
-            AllToursSolver allSolver = buildAllSolver(strategy, board, start, isClosed);
-            if (allSolver == null) {
-                System.out.println("Selected strategy does not support 'all' mode. Try 'backtrack'.");
-                return USAGE;
-            }
+            // 'all' with the parallel strategy may want its own pool, same as 'single'
+            ForkJoinPool allPool = (poolParallelism != null && "parallel".equals(strategy))
+                    ? new ForkJoinPool(poolParallelism)
+                    : null;
+            List<List<Position>> allSolutions;
+            long t1;
+            try {
+                AllToursSolver allSolver = buildAllSolver(strategy, board, start, isClosed, forkDepth, allPool);
+                if (allSolver == null) {
+                    System.out.println("Selected strategy does not support 'all' mode. Try 'backtrack' or 'parallel'.");
+                    return USAGE;
+                }
 
-            List<List<Position>> allSolutions = allSolver.solveAll();
-            long t1 = System.nanoTime();
+                allSolutions = allSolver.solveAll();
+                t1 = System.nanoTime();
+            } finally {
+                if (allPool != null) {
+                    allPool.shutdownNow();
+                }
+            }
             System.out.printf("Found %d solution(s) in %.3f ms.%n",
                     allSolutions.size(), (t1 - t0) / 1e6);
 
@@ -391,13 +403,13 @@ public final class Main {
      * Build a solver for 'all' mode. Returns null if strategy doesn't support
      * enumeration.
      */
-    private static AllToursSolver buildAllSolver(String strategy, Board board, Position start, boolean isClosed) {
+    private static AllToursSolver buildAllSolver(String strategy, Board board, Position start, boolean isClosed,
+            int forkDepth, ForkJoinPool pool) {
         switch (strategy) {
             case "backtrack":
                 return new BacktrackingAllSolutionsSolver(board, start, isClosed);
             case "parallel":
-                System.out.println("Parallel strategy does not support 'all' mode yet. Falling back is disabled.");
-                return null;
+                return new ParallelAllToursSolver(board, start, isClosed, forkDepth, pool);
             case "warnsdorff":
             default:
                 System.out.println("Warnsdorff strategy does not support 'all' mode.");
