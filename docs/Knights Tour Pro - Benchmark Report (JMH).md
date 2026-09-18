@@ -40,18 +40,18 @@ Reproduce with:
 
 | Variant | open-from-centre | closed-from-corner |
 | ------- | ---------------: | -----------------: |
-| `naive_order_sequential` | 75.280 ± 1.243 ms | 192.383 ± 2.753 ms |
-| `warnsdorff_order_sequential` | **0.038 ± 0.001 ms** | 41 966 ± 45 751 ms |
-| `warnsdorff_order_parallel` | 0.092 ± 0.003 ms | **0.182 ± 0.058 ms** |
+| `naive_order_sequential` | 10.751 ± 0.189 ms | 29.115 ± 1.224 ms |
+| `warnsdorff_order_sequential` | **0.013 ± 0.001 ms** | 6285 ± 727 ms |
+| `warnsdorff_order_parallel` | 0.034 ± 0.001 ms | **0.044 ± 0.001 ms** |
 
 ## Reading the numbers
 
-### The heuristic is worth ~2000× on open tours, and is a disaster on closed ones
+### The heuristic is worth ~800× on open tours, and is a disaster on closed ones
 
-On the open tour the Warnsdorff ordering takes 75.280 ms down to 0.038 ms — roughly
-**1980× faster**, on a single thread, with no parallelism involved at all.
+On the open tour the Warnsdorff ordering takes 10.751 ms down to 0.013 ms — roughly
+**830× faster**, on a single thread, with no parallelism involved at all.
 
-On the closed tour the same ordering goes from 192 ms to about 42 seconds: **~218× slower**
+On the closed tour the same ordering goes from 29 ms to about 6.3 seconds: **~216× slower**
 than trying moves in plain board order. Warnsdorff greedily heads for the squares with
 fewest onward moves, which is excellent for covering the board but says nothing about
 ending up adjacent to the start. It walks the search into a large region of paths that
@@ -60,12 +60,12 @@ one dead end at a time.
 
 ### The threads are not a speed-up, they are an escape hatch
 
-On the open tour, forking makes things **2.4× slower** (0.038 → 0.092 ms). There is almost
+On the open tour, forking makes things **2.6× slower** (0.013 → 0.034 ms). There is almost
 no search left to divide, so all that is left is the cost of deep-copying a `Board` per task
 and driving the fork/join pool.
 
-On the closed tour, forking turns ~42 seconds into 0.182 ms. That is a factor of roughly
-**230 000× on 12 cores** — which is the point worth pausing on, because dividing work among
+On the closed tour, forking turns ~6.3 seconds into 0.044 ms. That is a factor of roughly
+**143 000× on 12 cores** — which is the point worth pausing on, because dividing work among
 12 threads cannot possibly explain more than a 12× gain.
 
 The speed-up does not come from splitting work. It comes from **not having to trust the
@@ -75,32 +75,49 @@ immediately, and the shared `found` flag stops everyone as soon as it does. Para
 buys diversification, not throughput.
 
 That also explains why the parallel solver beats plain backtracking on the closed tour
-(192 ms → 0.182 ms, about **1050×**) even though its move ordering is the worse of the two:
+(29 ms → 0.044 ms, about **660×**) even though its move ordering is the worse of the two:
 running many orderings concurrently beats committing to any single one.
 
 ## A caveat on the slow cell
 
-`warnsdorff_order_sequential` on the closed tour reads **41 966 ± 45 751 ms**. The error bar
-is larger than the value, so treat that figure as "tens of seconds", not as 42 seconds. With
-an operation that takes most of a minute, three measurement iterations cannot say more than
-the order of magnitude. Raising the iteration count would tighten it at the cost of a much
-longer run:
+`warnsdorff_order_sequential` on the closed tour reads **6285 ± 727 ms**, an error of about
+12%. With an operation that takes several seconds, three measurement iterations cannot do
+much better. Tighten it at the cost of a longer run:
 
 ```bash
 ./gradlew jmh -PjmhInclude='.*ParallelVsSequentialBenchmark.*' -PjmhIterations=10
 ```
 
-Every other cell has an error under 3% of its value.
+Every other cell has an error under 8% of its value.
 
 ## Practical guidance
 
-* **Open tours** — use `warnsdorff`. It is the fastest option by three orders of magnitude and
-  it does not need a thread pool. Do not reach for `parallel` here; it only adds overhead.
+* **Open tours** — use `warnsdorff`. It is the fastest option by a wide margin and it does not
+  need a thread pool. Do not reach for `parallel` here; it only adds overhead.
 * **Closed tours** — use `parallel`. Plain `warnsdorff` frequently fails outright (it returns no
   tour when its greedy path dead-ends), and the sequential search behind it is far too slow.
 * **Enumerating every tour** — only `backtrack` supports `all` mode; see `AllSolutionsBenchmark`.
 * `forkDepth` matters far more than pool size. Depth 0 disables forking entirely; 2 to 4 is
   where the closed-tour case becomes tractable.
+
+## What the precomputed neighbour table changed
+
+`Board` used to build the legal moves of a square on every call, allocating eight `Position`
+objects and two streams each time. That happens once per search node and again for every
+candidate while computing Warnsdorff degrees, so it dominated the profile. The moves are now
+computed once per board size and shared by every copy of the board.
+
+The measurements above are after that change. Before it:
+
+| Variant | open-from-centre | closed-from-corner |
+| ------- | ---------------: | -----------------: |
+| `naive_order_sequential` | 75.280 ms | 192.383 ms |
+| `warnsdorff_order_sequential` | 0.038 ms | ~42 000 ms |
+| `warnsdorff_order_parallel` | 0.092 ms | 0.182 ms |
+
+Every variant got between **2.7× and 7× faster**, and the ratios that this report is about
+barely moved — the table removes a constant overhead, it does not change which strategy suits
+which problem.
 
 ## Note on configuring JMH
 
