@@ -8,7 +8,19 @@ actually wins and when.
 
 ## Quick start
 
-You need **Java 17 or newer**. Gradle downloads everything else on the first run.
+**Just want to use it?** Double-click `build-app.bat` and wait. It opens a folder holding
+`Knights Tour Pro.exe`; run that. The app brings its own Java runtime, so the folder can be
+copied to a machine with no Java installed and it will still start.
+
+Building it does need **Java 17 or newer** on this machine. Gradle downloads the rest on the
+first run.
+
+```bash
+./gradlew packageApp   # the desktop app, same as build-app.bat
+./gradlew runFx        # the interface, without packaging anything
+```
+
+For the command line:
 
 ```bash
 ./gradlew shadowJar
@@ -16,11 +28,7 @@ java -jar build/libs/knights-tour-pro-1.0.0-all.jar 8 8 0 0 single open warnsdor
 ```
 
 That finds a tour of an 8×8 board starting from the top-left corner, prints it, and writes
-it to `output/`. Or skip the packaging and use the graphical interface:
-
-```bash
-./gradlew runFx
-```
+it to `output/`.
 
 ---
 
@@ -131,8 +139,26 @@ path is animated square by square — the speed slider controls how fast. **Stop
 the search itself, not just the animation, so it is safe on a board that turns out to be
 too big.
 
-> The packaged JAR runs the command line only. The interface needs JavaFX's native
-> libraries, so launch it with `./gradlew runFx`.
+### As a standalone app
+
+```bash
+./gradlew packageApp
+```
+
+This writes `build/dist/Knights Tour Pro/`: a real `Knights Tour Pro.exe` with a Java
+runtime in the folder beside it. Double-clicking the .exe opens the interface, and the whole
+folder can be moved to a machine that has no Java. It weighs around 140 MB, nearly all of it
+that runtime. `build-app.bat` runs this same task without a terminal.
+
+Exports land in a folder called `output`, resolved from wherever the app was started — for
+a double-click, the folder holding the .exe.
+
+> An `.msi` installer is possible as well, since jpackage builds one with `--type msi`, but
+> that needs the WiX Toolset installed. The portable folder needs nothing extra.
+
+> The all-in-one JAR carries JavaFX and its native libraries, so it can open the interface
+> too: `java -cp build/libs/knights-tour-pro-1.0.0-all.jar knights.ui.Launcher`. Only its
+> default entry point is the command line.
 
 ---
 
@@ -244,6 +270,7 @@ give up, which is how the Stop button works. Cancelling raises `CancellationExce
 ./gradlew build       # compile and run the tests
 ./gradlew test        # tests only
 ./gradlew shadowJar   # package everything into one JAR
+./gradlew packageApp  # build the double-clickable desktop app
 ./gradlew jmh         # benchmarks (slow)
 ```
 
@@ -308,8 +335,8 @@ smaller board. In the interface, press Stop.
 Done so far: the four strategies, open and closed tours, TXT and JSON exports, the JavaFX
 interface, JMH benchmarks, CI, a precomputed neighbour table, cancellable searches,
 exporters that report a failed write instead of swallowing it, SVG drawings and CSV tables
-of the tours, parallel enumeration of every tour, and meaningful exit codes with tests
-covering the argument parsing.
+of the tours, parallel enumeration of every tour, meaningful exit codes with tests covering
+the argument parsing, and a standalone desktop app that runs without Java installed.
 
 Still open:
 

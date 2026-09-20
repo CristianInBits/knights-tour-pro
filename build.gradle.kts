@@ -80,6 +80,69 @@ tasks.register<JavaExec>("runFx") {
     }
 }
 
+// ---- Desktop app ----
+// jpackage wraps the all-in-one JAR in a real Windows .exe and puts a cut-down Java
+// runtime next to it, so the app starts with a double click and runs on a machine with no
+// Java installed. This builds the portable folder; a .msi installer would additionally
+// need the WiX Toolset, which this does not assume.
+
+val appName = "Knights Tour Pro"
+val appDest = layout.buildDirectory.dir("dist")
+
+val stageForPackaging = tasks.register<Copy>("stageForPackaging") {
+    // jpackage copies everything in its input folder into the app, and build/libs also
+    // holds the plain and benchmark JARs, so stage the one that should ship on its own.
+    from(tasks.shadowJar)
+    into(layout.buildDirectory.dir("jpackage-input"))
+}
+
+tasks.register<Exec>("packageApp") {
+    group = "distribution"
+    description = "Build a double-clickable Windows app with its own Java runtime"
+    dependsOn(stageForPackaging)
+
+    // Package with the same Java the code is built for, so the bundled runtime matches.
+    val jpackage = javaToolchains.launcherFor {
+        languageVersion.set(JavaLanguageVersion.of(17))
+    }.map { it.metadata.installationPath.file("bin/jpackage.exe").asFile.absolutePath }
+
+    val stagedJar = tasks.shadowJar.flatMap { it.archiveFileName }
+    val input = layout.buildDirectory.dir("jpackage-input")
+    val icon = layout.projectDirectory.file("packaging/knight.ico")
+    val appVersion = version.toString()
+
+    doFirst {
+        // jpackage refuses to write over an app folder that is already there, and the
+        // launcher it leaves behind is read-only, which Windows will not delete until the
+        // flag is cleared. Clear it on the way down and check the folder really went.
+        val previous = appDest.get().asFile.resolve(appName)
+        previous.walkBottomUp().forEach {
+            it.setWritable(true)
+            it.delete()
+        }
+        check(!previous.exists()) { "Could not remove the previous app at " + previous }
+
+        commandLine(
+            jpackage.get(),
+            "--type", "app-image",
+            "--name", appName,
+            "--app-version", appVersion,
+            "--input", input.get().asFile.absolutePath,
+            "--main-jar", stagedJar.get(),
+            // Not MainFX: knights.ui.Launcher explains why it cannot be the main class.
+            "--main-class", "knights.ui.Launcher",
+            "--icon", icon.asFile.absolutePath,
+            "--dest", appDest.get().asFile.absolutePath,
+            "--vendor", "CristianInBits",
+            "--description", "Knight's Tour solver and visualiser"
+        )
+    }
+
+    doLast {
+        logger.lifecycle("Ready: {}", appDest.get().asFile.resolve(appName).resolve("$appName.exe"))
+    }
+}
+
 jmh {
     // No defaults on purpose. Anything set here is applied to every benchmark and wins
     // over its annotations, so the values below used to override each class's own
