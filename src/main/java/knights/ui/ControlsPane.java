@@ -42,7 +42,9 @@ public class ControlsPane extends VBox {
 
     private final CheckBox chkClosed = new CheckBox("Closed tour");
     private final CheckBox chkUseCustomPool = new CheckBox("Custom thread pool");
-    private final CheckBox chkExport = new CheckBox("Write TXT and JSON");
+    // Deliberately does not name the formats: a run writes four of them and the label
+    // fell out of date once already. The tooltip lists them.
+    private final CheckBox chkExport = new CheckBox("Write result files");
 
     private final Slider slSpeed = new Slider(10, 400, 80); // ms per step
     private final Label lblSpeed = new Label("80 ms");
