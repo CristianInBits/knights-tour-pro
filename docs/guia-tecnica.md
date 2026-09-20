@@ -474,11 +474,96 @@ La decisión que merece explicación: **"no hay recorrido" no es un error**. Un 
 solución, y el programa ha hecho su trabajo perfectamente al decirlo. Es la misma convención
 que usa `grep`.
 
+### Una aplicación que se abre con doble clic
+
+Hasta aquí, usar el programa exigía dos cosas: una terminal y un Java instalado. `jpackage`
+—una herramienta que viene dentro del propio JDK— quita las dos. Toma el JAR que ya lleva
+todas las dependencias, le añade un Java recortado y produce una carpeta con un ejecutable
+de verdad:
+
+```
+Knights Tour Pro/
+├── Knights Tour Pro.exe     el lanzador, con el icono del caballo
+├── app/                     el JAR con todo dentro
+└── runtime/                 el Java que usa la aplicación
+```
+
+La carpeta es autocontenida: se puede copiar a un ordenador sin Java y arranca igual. Lo
+comprobamos mirando qué máquina virtual carga el proceso, y sale de su propio `runtime/`,
+no del sistema. Con un matiz: JavaFX extrae sus librerías nativas del JAR a una caché en la
+carpeta del usuario la primera vez que arranca. Salen de dentro del paquete, pero no se
+quedan dentro de él.
+
+#### Por qué hizo falta una clase que solo sirve para arrancar
+
+El obstáculo no fue empaquetar, sino algo anterior: **`MainFX` no puede ser la clase
+principal de un JAR ejecutable**.
+
+Java tiene dos maneras de encontrar código: el *classpath*, la lista de toda la vida, y el
+*module path*, el sistema de módulos que llegó en Java 9. JavaFX está pensado para el
+segundo. Cuando el lanzador de Java ve que la clase principal hereda de `Application`, exige
+que JavaFX esté presente como módulo; si llega por el classpath —que es justo lo que hace un
+JAR con todo dentro— se niega a arrancar:
+
+```
+Error: JavaFX runtime components are missing, and are required to run this application
+```
+
+La salida es casi tonta: una clase que **no** herede de `Application` y que llame ella misma
+al arranque.
+
+```java
+public final class Launcher {
+    public static void main(String[] args) {
+        Application.launch(MainFX.class, args);
+    }
+}
+```
+
+La comprobación del lanzador solo mira la clase principal. Al no heredar `Launcher` de
+`Application` no se activa, y ya dentro del programa `Application.launch` funciona sin
+problema desde el classpath. La restricción era del arranque, no de JavaFX.
+
+Lo verificamos en los tres casos, porque una explicación solo vale si predice bien: una
+clase que hereda de `Application` **con** método `main` falla exactamente igual que una sin
+él —lo que descarta que el problema fuese el `main`— y `Launcher` abre la interfaz.
+
+> **Aviso para quien lea el error en español**: el JDK lo traduce mal. En lugar del mensaje
+> de arriba aparece «el método principal debe devolver un valor del tipo void en la clase
+> {0}», con el `{0}` sin rellenar, que manda a buscar un problema inexistente en el método
+> `main`. Añadiendo `-Duser.language=en` sale el mensaje verdadero.
+
+#### Un detalle de Windows
+
+Reconstruir la aplicación fallaba a partir de la segunda vez. `jpackage` se niega a escribir
+encima de una carpeta que ya existe, así que la tarea de Gradle la borra antes... solo que
+el borrado no llegaba a ocurrir.
+
+La causa: `jpackage` deja el `.exe` que genera marcado como **solo lectura**, y Windows no
+borra un fichero con ese atributo. La orden de borrar devolvía «no» sin quejarse, y el error
+salía más tarde y en boca de `jpackage`, describiendo un síntoma en vez de la causa. La
+tarea ahora le quita el atributo a cada fichero antes de borrarlo y **comprueba que la
+carpeta desapareció de verdad**, para que un fallo aquí se explique aquí.
+
+Es el mismo patrón que la carpeta por ejecución, visto del revés: allí el problema era
+comprobar y actuar como dos pasos separados; aquí, actuar sin comprobar el resultado.
+
+#### El precio: 140 MB
+
+Casi todo es el Java incrustado. `jpackage` sabe incluir solo los módulos que el programa
+necesita, pero para deducirlos tiene que analizar las dependencias, y con un JAR que lo
+carga todo por el classpath acaba optando por lo seguro: el runtime que genera trae el JDK
+completo, con herramientas de desarrollo que una aplicación nunca usa.
+
+Se podría recortar enumerando los módulos a mano. El precio de equivocarse es que la falta
+aparezca tarde, cuando alguien toque la función que necesitaba el módulo olvidado. Para algo
+que se copia en una carpeta, 140 MB salen más baratos que ese riesgo.
+
 ---
 
 ## 7. Cómo se verificó
 
-Con 120 tests, pero el número importa menos que lo que comprueban.
+Con 127 tests, pero el número importa menos que lo que comprueban.
 
 **Geometría, no soluciones concretas.** Los tests de los solvers no comparan contra un
 recorrido guardado: verifican que el resultado *es* un recorrido —longitud correcta, sin
@@ -530,6 +615,12 @@ encontrar todos. Mismo código, ganancias de naturaleza distinta.
 después reservarlo deja una ventana entre ambas cosas. Cuando el sistema ofrece una
 operación que hace las dos a la vez —crear la carpeta o fallar—, esa es la que hay que
 usar.
+
+**Una comprobación que falla puede estar fallando ella.** La primera prueba de la aplicación
+empaquetada mostró un proceso vivo, sin ventana y con 8 MB de memoria, y la dimos por rota.
+El lanzador de `jpackage` arranca un proceso hijo: mirábamos al padre, que es solo un
+arrancador. La aplicación funcionaba desde el primer intento. Antes de arreglar lo
+observado, conviene asegurarse de estar observando lo correcto.
 
 ---
 
