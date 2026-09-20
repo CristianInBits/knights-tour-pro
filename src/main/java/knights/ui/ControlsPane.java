@@ -306,27 +306,27 @@ public class ControlsPane extends VBox {
     }
 
     private void tooltips() {
-        spRows.setTooltip(tt("Número de filas del tablero"));
-        spCols.setTooltip(tt("Número de columnas del tablero"));
-        spSR.setTooltip(tt("Fila de inicio (empieza en 0)"));
-        spSC.setTooltip(tt("Columna de inicio (empieza en 0)"));
+        spRows.setTooltip(tt("How many rows the board has"));
+        spCols.setTooltip(tt("How many columns the board has"));
+        spSR.setTooltip(tt("The row the knight starts on, counting from 0"));
+        spSC.setTooltip(tt("The column the knight starts on, counting from 0"));
         cbMode.setTooltip(tt("""
-                single: encuentra un único recorrido y para
-                all: enumera todos (puede tardar muchísimo)"""));
+                single: find one tour and stop
+                all: enumerate every tour, which can take a very long time"""));
         cbStrategy.setTooltip(tt("""
-                backtrack: exhaustivo, encuentra solución si existe
-                warnsdorff: heurística, la más rápida en abiertos
-                parallel: explora varias ramas a la vez, mejor en cerrados"""));
-        chkClosed.setTooltip(tt("El recorrido debe terminar a un salto de caballo del inicio"));
-        spFork.setTooltip(tt("Hasta qué profundidad se reparte la búsqueda entre hilos"));
-        chkUseCustomPool.setTooltip(tt("Fijar el número de hilos en vez de usar el pool compartido"));
-        spPool.setTooltip(tt("Número de hilos"));
-        tfOut.setTooltip(tt("Carpeta donde se guardan los resultados"));
-        chkExport.setTooltip(tt("Exportar el recorrido a TXT y JSON"));
-        btnRun.setTooltip(tt("Buscar un recorrido"));
-        btnPause.setTooltip(tt("Pausar o reanudar la animación"));
-        btnStop.setTooltip(tt("Detener la búsqueda y limpiar el tablero"));
-        slSpeed.setTooltip(tt("Milisegundos entre paso y paso de la animación"));
+                backtrack: exhaustive, finds a tour whenever one exists
+                warnsdorff: a heuristic, by far the fastest on open tours
+                parallel: explores several branches at once, better on closed tours"""));
+        chkClosed.setTooltip(tt("The tour must end a knight's move away from where it started"));
+        spFork.setTooltip(tt("How deep the search keeps splitting across threads"));
+        chkUseCustomPool.setTooltip(tt("Fix the number of threads instead of using the shared pool"));
+        spPool.setTooltip(tt("How many threads to use"));
+        tfOut.setTooltip(tt("The folder the results are written to"));
+        chkExport.setTooltip(tt("Write the tour as TXT, JSON, SVG and CSV"));
+        btnRun.setTooltip(tt("Search for a tour"));
+        btnPause.setTooltip(tt("Pause or resume the animation"));
+        btnStop.setTooltip(tt("Stop the search and clear the board"));
+        slSpeed.setTooltip(tt("Milliseconds between one animated step and the next"));
     }
 
     /** One short line about the current selection, updated as it changes. */
