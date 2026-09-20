@@ -1,8 +1,20 @@
+<div align="center">
+
 # ♞ Knight's Tour Pro
 
-Four ways to solve the Knight's Tour — a knight visiting every square of a board exactly
-once — with a command line, a JavaFX interface, and benchmarks that say which approach
-actually wins and when.
+**Four ways to make a knight visit every square of a board — and the benchmarks that say
+which one actually wins, and why.**
+
+[![Java CI](https://github.com/CristianInBits/knights-tour-pro/actions/workflows/ci.yml/badge.svg)](https://github.com/CristianInBits/knights-tour-pro/actions/workflows/ci.yml)
+![Java](https://img.shields.io/badge/Java-17-f89820)
+![JavaFX](https://img.shields.io/badge/JavaFX-17-1f6feb)
+![Gradle](https://img.shields.io/badge/Gradle-9.7.1-02303a)
+![License](https://img.shields.io/badge/license-MIT-lightgrey)
+
+<img src="docs/img/ui-tour.png" width="820"
+     alt="An 8x8 tour found with Warnsdorff's heuristic, each square numbered in order">
+
+</div>
 
 ---
 
@@ -32,6 +44,40 @@ it to `output/`.
 
 ---
 
+## The thing worth knowing
+
+This project started out claiming that parallel search made it dramatically faster. That was
+true, and the explanation was wrong.
+
+Adding a control variant — the parallel solver with the threads switched off — separated two
+effects that had been measured as one:
+
+| 6×6 board | Move ordering | Search | Time |
+| --------- | ------------- | ------ | ---- |
+| open, from the centre | board order | one thread | 10.751 ms |
+| open, from the centre | Warnsdorff | one thread | **0.013 ms** |
+| open, from the centre | Warnsdorff | parallel | 0.034 ms |
+| closed, from a corner | board order | one thread | 29.115 ms |
+| closed, from a corner | Warnsdorff | one thread | 6285 ms |
+| closed, from a corner | Warnsdorff | parallel | **0.044 ms** |
+
+The heuristic is worth about **830×** on open tours — and it is **216× worse** on closed
+ones, where its greedy path walks into a trap. Forking actually *hurts* on open tours.
+
+That last row is the interesting one: 143,000× on twelve cores cannot be work being divided
+twelve ways. The threads are not splitting the search, they are **diversifying** it —
+exploring several opening moves at once, so the branch the heuristic would have committed to
+no longer costs the whole run.
+
+Enumerating *every* tour is the opposite case. There is no early exit, so the threads really
+do divide a fixed amount of work, and the gain is bounded by the core count: about **3.5× on
+12 cores**.
+
+Full numbers in the [benchmark report](docs/Knights%20Tour%20Pro%20-%20Benchmark%20Report%20%28JMH%29.md),
+and the theory in the [technical guide](docs/guia-tecnica.md) (Spanish).
+
+---
+
 ## Choosing a strategy
 
 | Strategy | What it does | Use it for |
@@ -40,25 +86,53 @@ it to `output/`.
 | `backtrack` | Tries every move in board order, backing up at dead ends | Enumerating **every** tour, and small boards where it is fast enough |
 | `parallel` | Several branches explored at once | **Closed tours**, and enumerating every tour in `all` mode |
 
-Two things are worth knowing before you pick:
-
 **Warnsdorff can fail.** It never backs up, so when its greedy path dead-ends it returns no
 tour at all — even though one exists. That happens often on closed tours.
 
-**`parallel` is not simply "the fast one".** On an open tour it is *slower* than the plain
-sequential search, because there is nothing left to divide. On a closed tour it is faster by
-orders of magnitude, and not because it splits the work: it explores several opening moves
-at once, so a promising-looking branch that turns out to be a trap no longer costs you the
-whole search. The [benchmark report](docs/Knights%20Tour%20Pro%20-%20Benchmark%20Report%20%28JMH%29.md)
-has the measurements.
+**`all` mode needs a solver that backtracks**, so it works with `backtrack` and `parallel`
+but not with `warnsdorff`. Keep the board small: the number of tours grows explosively, and
+a 5×5 from a corner already has 304 of them, a 5×6 has 4542.
 
-`all` mode — enumerating every tour — works with `backtrack` and `parallel`, not with
-`warnsdorff`, which never backtracks and so cannot enumerate anything. Enumeration is where
-threads help most predictably: there is no early exit, so they divide a fixed amount of work
-instead of racing for the first answer. Measured at roughly **3.5× on 12 cores**.
+---
 
-The number of tours grows explosively, so keep the board small: a 5×5 from a corner already
-has 304 of them, and a 5×6 has 4542.
+## The interface
+
+```bash
+./gradlew runFx
+```
+
+Board size, starting square, mode and strategy are set in the window, and the knight's path
+is animated square by square. **Stop** interrupts the search itself, not just the animation,
+so it is safe on a board that turns out to be too big.
+
+<div align="center">
+<img src="docs/img/ui-closed.png" width="760"
+     alt="A closed 6x6 tour found with the parallel strategy, with the fork depth control visible">
+</div>
+
+The sidebar follows what you pick: choosing `parallel` reveals the fork depth and pool size,
+and the hint at the bottom says whether the strategy suits the board you have set up.
+
+### As a standalone app
+
+```bash
+./gradlew packageApp
+```
+
+This writes `build/dist/Knights Tour Pro/`: a real `Knights Tour Pro.exe` with a Java runtime
+in the folder beside it. Double-clicking the .exe opens the interface, and the whole folder
+can be moved to a machine that has no Java. It weighs around 140 MB, nearly all of it that
+runtime. `build-app.bat` runs this same task without a terminal.
+
+Exports land in a folder called `output`, resolved from wherever the app was started — for a
+double-click, the folder holding the .exe.
+
+> An `.msi` installer is possible as well, since jpackage builds one with `--type msi`, but
+> that needs the WiX Toolset installed. The portable folder needs nothing extra.
+
+> The all-in-one JAR carries JavaFX and its native libraries, so it can open the interface
+> too: `java -cp build/libs/knights-tour-pro-1.0.0-all.jar knights.ui.Launcher`. Only its
+> default entry point is the command line.
 
 ---
 
@@ -67,6 +141,28 @@ has 304 of them, and a 5×6 has 4542.
 ```bash
 java -jar build/libs/knights-tour-pro-1.0.0-all.jar <rows> <cols> <startRow> <startCol> <mode> <tourType> [strategy] [flags]
 ```
+
+```bash
+# Every open tour of a 5x5 from the corner, printing only the first two
+java -jar build/libs/knights-tour-pro-1.0.0-all.jar 5 5 0 0 all open backtrack --limit 2
+
+# A closed tour of a 6x6, where parallel search pays off
+java -jar build/libs/knights-tour-pro-1.0.0-all.jar 6 6 0 0 single closed parallel --fork-depth 4
+
+# Straight to a file, nothing on the console
+java -jar build/libs/knights-tour-pro-1.0.0-all.jar 8 8 0 0 single open warnsdorff --no-print --out results
+```
+
+Or through Gradle, without packaging anything:
+
+```bash
+./gradlew run --args="6 6 0 0 single open backtrack"
+```
+
+<details>
+<summary><b>Full argument and flag reference</b></summary>
+
+<br/>
 
 | Argument | Values | Description |
 | -------- | ------ | ----------- |
@@ -96,8 +192,8 @@ Flags take either form: `--out results` or `--out=results`.
 | `2` | The arguments are not valid |
 | `3` | A file could not be written |
 
-A board with no tour is deliberately not an error, so a script can tell "there is no
-answer" from "something went wrong":
+A board with no tour is deliberately not an error, so a script can tell "there is no answer"
+from "something went wrong":
 
 ```bash
 if java -jar build/libs/knights-tour-pro-1.0.0-all.jar 4 4 0 0 single open backtrack --no-print --no-export; then
@@ -107,65 +203,14 @@ elif [ $? -eq 1 ]; then
 fi
 ```
 
-### Examples
-
-```bash
-# Every open tour of a 5x5 from the corner, printing only the first two
-java -jar build/libs/knights-tour-pro-1.0.0-all.jar 5 5 0 0 all open backtrack --limit 2
-
-# A closed tour of a 6x6, where parallel search pays off
-java -jar build/libs/knights-tour-pro-1.0.0-all.jar 6 6 0 0 single closed parallel --fork-depth 4
-
-# Straight to a file, nothing on the console
-java -jar build/libs/knights-tour-pro-1.0.0-all.jar 8 8 0 0 single open warnsdorff --no-print --out results
-```
-
-Or run it through Gradle without packaging anything:
-
-```bash
-./gradlew run --args="6 6 0 0 single open backtrack"
-```
-
----
-
-## The graphical interface
-
-```bash
-./gradlew runFx
-```
-
-Board size, starting square, mode and strategy are all set in the window, and the knight's
-path is animated square by square — the speed slider controls how fast. **Stop** interrupts
-the search itself, not just the animation, so it is safe on a board that turns out to be
-too big.
-
-### As a standalone app
-
-```bash
-./gradlew packageApp
-```
-
-This writes `build/dist/Knights Tour Pro/`: a real `Knights Tour Pro.exe` with a Java
-runtime in the folder beside it. Double-clicking the .exe opens the interface, and the whole
-folder can be moved to a machine that has no Java. It weighs around 140 MB, nearly all of it
-that runtime. `build-app.bat` runs this same task without a terminal.
-
-Exports land in a folder called `output`, resolved from wherever the app was started — for
-a double-click, the folder holding the .exe.
-
-> An `.msi` installer is possible as well, since jpackage builds one with `--type msi`, but
-> that needs the WiX Toolset installed. The portable folder needs nothing extra.
-
-> The all-in-one JAR carries JavaFX and its native libraries, so it can open the interface
-> too: `java -cp build/libs/knights-tour-pro-1.0.0-all.jar knights.ui.Launcher`. Only its
-> default entry point is the command line.
+</details>
 
 ---
 
 ## Output files
 
 Every run gets its own folder under the output directory, named after the time it started,
-and writes four files into it unless you pass `--no-export`:
+and writes four formats into it unless you pass `--no-export`:
 
 ```text
 output/
@@ -174,9 +219,14 @@ output/
 └── 2026-09-19_101502/
 ```
 
-The names are `tours.*` in `all` mode. Nothing is ever overwritten: run the program twice
-and you keep both results, with each run's four formats sitting together. Folder names sort
-into chronological order.
+Nothing is ever overwritten: run the program twice and you keep both results, with each
+run's four formats sitting together. Folder names sort into chronological order. The names
+are `tours.*` in `all` mode.
+
+<details>
+<summary><b>What each format looks like</b></summary>
+
+<br/>
 
 **`tour.txt`** — metadata sorted by name, then each step as a 1-based index and a square:
 
@@ -235,6 +285,8 @@ file loading cleanly; the TXT and JSON exports carry it.
 
 Runs with `parallel` add `forkDepth` and `pool` to the metadata.
 
+</details>
+
 ---
 
 ## How it is put together
@@ -280,8 +332,8 @@ have one, so it does not matter which Java you normally use. Versions live in
 
 The tests cover the four solvers, the shape of the tours they produce (length, no repeats,
 legal knight moves, closing when required), the board and its neighbour table — including
-the order moves come out in, which decides which tour each solver returns — cancellation,
-and both exporters.
+the order moves come out in, which decides which tour each solver returns — cancellation, the
+per-run output folder, and all four exporters.
 
 ---
 
@@ -299,19 +351,16 @@ Three suites in `src/jmh/java`:
 ./gradlew jmh -PjmhInclude='.*ParallelVsSequentialBenchmark.*'   # just one
 ```
 
-Measurements and what they mean:
-[benchmark report](docs/Knights%20Tour%20Pro%20-%20Benchmark%20Report%20%28JMH%29.md).
-
-For the theory behind the algorithms, how each one is implemented and what the measurements
-turned up, there is a [technical guide](docs/guia-tecnica.md) (in Spanish).
-
 > Each benchmark sets its own mode and iteration counts through annotations. Anything put in
 > the `jmh { }` block of `build.gradle.kts` applies to every class and silently overrides
 > them, so that block is deliberately left empty.
 
 ---
 
-## Troubleshooting
+<details>
+<summary><b>Troubleshooting</b></summary>
+
+<br/>
 
 **The build fails before compiling anything.** Old Gradle versions cannot start on recent
 Java releases. This project ships Gradle 9.7.1, which handles current JDKs; if you hit this
@@ -328,15 +377,17 @@ The files are one level down, inside the folder named after the time the run sta
 on a large board from a corner, for instance. Try `parallel` with `--fork-depth 4`, or a
 smaller board. In the interface, press Stop.
 
+</details>
+
 ---
 
 ## Roadmap
 
 Done so far: the four strategies, open and closed tours, TXT and JSON exports, the JavaFX
-interface, JMH benchmarks, CI, a precomputed neighbour table, cancellable searches,
-exporters that report a failed write instead of swallowing it, SVG drawings and CSV tables
-of the tours, parallel enumeration of every tour, meaningful exit codes with tests covering
-the argument parsing, and a standalone desktop app that runs without Java installed.
+interface, JMH benchmarks, CI, a precomputed neighbour table, cancellable searches, exporters
+that report a failed write instead of swallowing it, SVG drawings and CSV tables of the
+tours, parallel enumeration of every tour, meaningful exit codes with tests covering the
+argument parsing, and a standalone desktop app that runs without Java installed.
 
 Still open:
 
@@ -349,8 +400,12 @@ Still open:
 Pull requests welcome. Please keep the existing style, add tests for anything new, and make
 sure `./gradlew build` passes. Commit message conventions are in [CLAUDE.md](CLAUDE.md).
 
+The screenshots above are generated, not taken by hand: `tools/screenshots/Shots.java` starts
+the real interface, moves it off screen, drives the controls and snapshots the scene, so they
+can be regenerated after a change to the UI.
+
 ---
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).
