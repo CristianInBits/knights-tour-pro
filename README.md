@@ -18,7 +18,7 @@ which one actually wins, and why.**
 
 ---
 
-## Quick start
+## ⚡ Quick start
 
 **Just want to use it?** Double-click `build-app.bat` and wait. It opens a folder holding
 `Knights Tour Pro.exe`; run that. The app brings its own Java runtime, so the folder can be
@@ -44,7 +44,7 @@ it to `output/`.
 
 ---
 
-## The thing worth knowing
+## 🔬 The thing worth knowing
 
 This project started out claiming that parallel search made it dramatically faster. That was
 true, and the explanation was wrong.
@@ -95,7 +95,7 @@ a 5×5 from a corner already has 304 of them, a 5×6 has 4542.
 
 ---
 
-## The interface
+## 🖥️ The interface
 
 ```bash
 ./gradlew runFx
@@ -136,7 +136,7 @@ double-click, the folder holding the .exe.
 
 ---
 
-## Command line
+## ⌨️ Command line
 
 ```bash
 java -jar build/libs/knights-tour-pro-1.0.0-all.jar <rows> <cols> <startRow> <startCol> <mode> <tourType> [strategy] [flags]
@@ -337,7 +337,7 @@ per-run output folder, and all four exporters.
 
 ---
 
-## Benchmarks
+## 📊 Benchmarks
 
 Three suites in `src/jmh/java`:
 
@@ -381,7 +381,7 @@ smaller board. In the interface, press Stop.
 
 ---
 
-## Roadmap
+## 🗺️ Roadmap
 
 Done so far: the four strategies, open and closed tours, TXT and JSON exports, the JavaFX
 interface, JMH benchmarks, CI, a precomputed neighbour table, cancellable searches, exporters
